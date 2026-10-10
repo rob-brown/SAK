@@ -6,6 +6,9 @@ defmodule Sak.Hints do
     cond do
       assigns.help_open? -> [{"Close", "<esc>"}]
       assigns.models != nil -> [{"Close", "<esc>"}]
+      assigns.confirm_delete != nil -> [{"Delete", "<enter>"}, {"Cancel", "<esc>"}]
+      assigns.rename != nil -> []
+      assigns.sessions_filter_open? -> []
       assigns.new_session != nil -> []
       assigns.command_open? -> []
       assigns.chat_search_open? -> []
@@ -36,7 +39,24 @@ defmodule Sak.Hints do
       session_row(Enum.at(assigns.session_rows, assigns.sessions_selected))
   end
 
-  defp session_row({:header, _project}), do: [{"Expand", "<enter>"}]
-  defp session_row({:session, _session}), do: [{"Switch", "<enter>"}]
-  defp session_row(nil), do: []
+  defp session_row({:header, _project}) do
+    [{"Expand", "<enter>"}, {"Filter", "/"}]
+  end
+
+  defp session_row({:session, session}) do
+    [
+      {"Switch", "<enter>"},
+      {"Rename", "r"},
+      {archive_label(session), "a"},
+      {"Delete", "d"},
+      {"Filter", "/"}
+    ]
+  end
+
+  defp session_row(nil) do
+    [{"Filter", "/"}]
+  end
+
+  defp archive_label(%{"state" => "archived"}), do: "Unarchive"
+  defp archive_label(_session), do: "Archive"
 end

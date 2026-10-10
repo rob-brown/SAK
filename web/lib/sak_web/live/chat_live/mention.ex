@@ -44,7 +44,9 @@ defmodule SakWeb.ChatLive.Mention do
     Component.assign(socket, mention_query: text, mention_selected: 0)
   end
 
-  def close(socket), do: Component.assign(socket, mention_open?: false)
+  def close(socket) do
+    Component.assign(socket, mention_open?: false)
+  end
 
   def move(%{assigns: %{mention_open?: false}} = socket, _delta), do: socket
 
@@ -73,7 +75,9 @@ defmodule SakWeb.ChatLive.Mention do
 
   def receive_index(socket, _token, _files), do: socket
 
-  def results(%{mention_base_cwd: nil}), do: {"", []}
+  def results(%{mention_base_cwd: nil}) do
+    {"", []}
+  end
 
   def results(assigns) do
     %{mention_base_cwd: cwd, mention_query: query, mention_files: files} = assigns

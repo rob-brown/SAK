@@ -42,7 +42,10 @@ defmodule Sak.ChatFields do
 
   defp block_field(%{type: :tool_result}, _index, _opts), do: []
 
-  defp block_field(%{text: text}, index, _opts), do: present(index, :content, text)
+  defp block_field(%{text: text}, index, _opts) do
+    present(index, :content, text)
+  end
+
   defp block_field(_block, _index, _opts), do: []
 
   defp error_field(%{error: error}, index) when is_binary(error) do
@@ -69,7 +72,9 @@ defmodule Sak.ChatFields do
     end
   end
 
-  defp summarize(arguments), do: arguments |> JSON.encode!() |> clip()
+  defp summarize(arguments) do
+    arguments |> JSON.encode!() |> clip()
+  end
 
   defp clip(text) do
     if String.length(text) > @argument_char_limit do

@@ -6,6 +6,8 @@
     data-help-open={to_string(@help_open?)}
     data-models-open={to_string(@models != nil)}
     data-wizard-open={to_string(@new_session != nil)}
+    data-confirm-open={to_string(@confirm_delete != nil)}
+    data-rename-open={to_string(@rename != nil)}
     data-command-open={to_string(@command_open?)}
     class="flex flex-col h-screen bg-neutral-950 text-neutral-100 font-mono text-sm"
   >
@@ -40,7 +42,40 @@
             >
               zoomed — z to restore
             </span>
+            <span
+              :if={@sidebar_tab == :sessions}
+              id="sessions-flags"
+              class="ml-auto px-2 py-1 text-xs text-neutral-600"
+            >
+              A {if @show_archived?, do: "on", else: "off"}
+            </span>
           </div>
+
+          <form
+            :if={@sessions_filter_open?}
+            id="sessions-filter-form"
+            phx-change="sessions_filter_change"
+            phx-submit="sessions_filter_confirm"
+            class="px-2 py-1 border-b border-neutral-800 shrink-0"
+          >
+            <input
+              id="sessions-filter-input"
+              type="text"
+              name="term"
+              value={@sessions_filter}
+              phx-hook="AutoFocus"
+              placeholder="Filter sessions…"
+              autocomplete="off"
+              class="w-full bg-neutral-950 text-neutral-100 px-2 py-1 outline-none border border-neutral-800 rounded text-xs"
+            />
+          </form>
+          <p
+            :if={@sessions_filter != "" and not @sessions_filter_open?}
+            id="sessions-filter-label"
+            class="px-2 py-1 border-b border-neutral-800 text-xs text-neutral-500 truncate shrink-0"
+          >
+            /{@sessions_filter}
+          </p>
 
           <ul :if={@sidebar_tab == :sessions} id="sidebar-sessions" class="overflow-y-auto flex-1">
             <li :if={@session_rows == []} class="px-2 py-2 text-neutral-600">
@@ -54,7 +89,7 @@
                     phx-value-index={index}
                     class={header_classes(index, @sessions_selected)}
                   >
-                    <span class="truncate">{disclosure(project)} {header_label(project)}</span>
+                    <span class="truncate">{disclosure(project)} {header_label(project, @home)}</span>
                     <span :if={project.collapsed?} class="shrink-0 text-neutral-500 font-normal">
                       ({project.count})
                     </span>
@@ -71,7 +106,15 @@
                       @current_id,
                       @chat
                     )}</span>
-                    <span class="truncate">{session_label(session)} — {session["model"]}</span>
+                    <div class="min-w-0 flex-1">
+                      <div class="truncate">{session_label(session)}</div>
+                      <div class="truncate text-xs text-neutral-500">
+                        {model_label(session)}<span
+                          :if={session["state"] == "archived"}
+                          class="ml-2 text-yellow-600"
+                        >archived</span>
+                      </div>
+                    </div>
                   </div>
               <% end %>
             </li>
@@ -224,6 +267,8 @@
       has_conversation?={@current_id != nil}
     />
     <.wizard :if={@new_session} new_session={@new_session} />
+    <.confirm_delete :if={@confirm_delete} confirm={@confirm_delete} />
+    <.rename :if={@rename} rename={@rename} />
     <.command
       :if={@command_open?}
       query={@command_query}

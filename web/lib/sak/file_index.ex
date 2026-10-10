@@ -114,5 +114,8 @@ defmodule Sak.FileIndex do
   defp protected_home_entry?(_name, _absolute, _relative, _home), do: false
 
   defp join_relative("", name), do: name
-  defp join_relative(relative, name), do: relative <> "/" <> name
+
+  defp join_relative(relative, name) do
+    relative <> "/" <> name
+  end
 end

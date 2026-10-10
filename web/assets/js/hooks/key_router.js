@@ -61,13 +61,15 @@ export function isModalOpen(dataset) {
   return (
     dataset.helpOpen === "true" ||
     dataset.modelsOpen === "true" ||
+    dataset.confirmOpen === "true" ||
+    dataset.renameOpen === "true" ||
     dataset.wizardOpen === "true" ||
     dataset.commandOpen === "true"
   )
 }
 
-export function modalKeys(_dataset) {
-  return ["escape"]
+export function modalKeys(dataset) {
+  return dataset.confirmOpen === "true" ? ["escape", "enter"] : ["escape"]
 }
 
 function focusPromptTextarea() {

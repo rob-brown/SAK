@@ -60,8 +60,14 @@ defmodule SakWeb.ChatLive.Search do
 
   def count_label(_index, 0), do: "no matches"
   def count_label(nil, 1), do: "1 match"
-  def count_label(nil, count), do: "#{count} matches"
-  def count_label(index, count), do: "#{index + 1} of #{count}"
+
+  def count_label(nil, count) do
+    "#{count} matches"
+  end
+
+  def count_label(index, count) do
+    "#{index + 1} of #{count}"
+  end
 
   defp matches(assigns) do
     ChatSearch.matches(

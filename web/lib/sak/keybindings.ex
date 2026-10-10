@@ -28,7 +28,12 @@ defmodule Sak.Keybindings do
       {"down", "Move the selection down"},
       {"k", "Move the selection up"},
       {"up", "Move the selection up"},
-      {"enter", "Switch to the selected session, or expand or collapse the selected project"}
+      {"enter", "Switch to the selected session, or expand or collapse the selected project"},
+      {"/", "Filter the sessions by name, directory or model"},
+      {"r", "Rename the selected session"},
+      {"a", "Archive the selected session, or unarchive it when it is archived"},
+      {"A", "Show or hide archived sessions"},
+      {"d", "Delete the selected session (it is hidden for good, with a confirmation first)"}
     ]
   end
 

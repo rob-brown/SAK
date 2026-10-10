@@ -12,11 +12,12 @@ defmodule SakWeb.ChatLive.NewSession do
   def open(socket) do
     assigns = socket.assigns
 
-    hints = [
-      cursor_cwd: Sessions.cursor_cwd(assigns),
-      active_cwd: Sessions.cwd_of(assigns.conversations, assigns.current_id),
-      home: assigns.home
-    ]
+    hints =
+      [
+        cursor_cwd: Sessions.cursor_cwd(assigns),
+        active_cwd: Sessions.cwd_of(assigns.conversations, assigns.current_id),
+        home: assigns.home
+      ] ++ model_hints()
 
     projects =
       assigns.conversations |> Enum.map(& &1["cwd"]) |> Enum.reject(&is_nil/1) |> Enum.uniq()
@@ -59,22 +60,54 @@ defmodule SakWeb.ChatLive.NewSession do
   def accept(%{assigns: %{new_session: %{phase: :ready, wizard: wizard}}} = socket) do
     case NewSessionWizard.accept(wizard) do
       :none -> socket
-      {:done, cwd} -> submit(socket, cwd)
+      {:next, next} -> update_wizard(socket, next)
+      {:done, answers} -> submit(socket, answers)
     end
   end
 
   def accept(socket), do: socket
 
-  def back(socket), do: close(socket)
+  def back(%{assigns: %{new_session: %{wizard: wizard}}} = socket) do
+    case NewSessionWizard.back(wizard) do
+      :cancel -> close(socket)
+      {:ok, previous} -> update_wizard(socket, previous)
+    end
+  end
 
-  defp submit(socket, cwd) do
-    case client().request("create_conversation", %{"cwd" => cwd}) do
+  def back(socket) do
+    close(socket)
+  end
+
+  defp model_hints do
+    case client().request("list_models", %{}) do
+      {:ok, %{"models" => models, "current" => current}} ->
+        [models: models, default_model: current["modelId"]]
+
+      _unavailable ->
+        []
+    end
+  end
+
+  defp submit(socket, answers) do
+    params =
+      %{"cwd" => answers.cwd}
+      |> put_present("modelId", answers.model_id)
+      |> put_present("name", answers.name)
+
+    case client().request("create_conversation", params) do
       {:ok, %{"conversationId" => id}} ->
-        socket |> close() |> LiveView.push_patch(to: "/c/#{id}")
+        socket |> close() |> Sessions.refresh() |> LiveView.push_patch(to: "/c/#{id}")
 
       {:error, reason} ->
         put(socket, %{error: reason})
     end
+  end
+
+  defp put_present(params, _key, nil), do: params
+  defp put_present(params, _key, ""), do: params
+
+  defp put_present(params, key, value) do
+    Map.put(params, key, value)
   end
 
   defp update_wizard(socket, wizard) do

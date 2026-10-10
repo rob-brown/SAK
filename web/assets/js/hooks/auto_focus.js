@@ -1,6 +1,7 @@
 const AutoFocus = {
   mounted() {
     this.el.focus()
+    this.el.select()
   },
 }
 

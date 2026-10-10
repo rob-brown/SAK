@@ -27,8 +27,14 @@ defmodule Sak.SessionRows do
   end
 
   @spec row_key(row() | nil) :: key() | nil
-  def row_key({:header, %{label: label}}), do: {:header, label}
-  def row_key({:session, session}), do: {:session, session["id"]}
+  def row_key({:header, %{label: label}}) do
+    {:header, label}
+  end
+
+  def row_key({:session, session}) do
+    {:session, session["id"]}
+  end
+
   def row_key(nil), do: nil
 
   @spec index_of([row()], key() | nil) :: non_neg_integer() | nil
@@ -50,7 +56,9 @@ defmodule Sak.SessionRows do
     Map.put_new_lazy(cache, path, fn -> identify.(path) end)
   end
 
-  defp cwd(session), do: session["cwd"] || ""
+  defp cwd(session) do
+    session["cwd"] || ""
+  end
 
   defp visible(_members, true), do: []
   defp visible(members, false), do: members

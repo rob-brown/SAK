@@ -14,8 +14,14 @@ defmodule Sak.Help do
 
   @spec parse_query(String.t()) :: search()
   def parse_query(""), do: nil
-  def parse_query("@" <> key), do: {:binding, key}
-  def parse_query(term), do: {:term, term}
+
+  def parse_query("@" <> key) do
+    {:binding, key}
+  end
+
+  def parse_query(term) do
+    {:term, term}
+  end
 
   defp filter(entries, nil), do: entries
 

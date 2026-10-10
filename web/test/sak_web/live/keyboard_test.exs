@@ -95,6 +95,7 @@ defmodule SakWeb.KeyboardTest do
     press(view, "n")
     opened = has_element?(view, "#wizard-overlay")
     view |> form("#wizard-form") |> render_submit()
+    view |> form("#wizard-form") |> render_submit()
 
     # Assert
     assert opened

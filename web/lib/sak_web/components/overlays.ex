@@ -3,8 +3,6 @@ defmodule SakWeb.Overlays do
 
   use Phoenix.Component
 
-  alias Sak.NewSessionWizard
-
   attr :rows, :list, required: true
   attr :search, :string, required: true
 
@@ -176,92 +174,10 @@ defmodule SakWeb.Overlays do
     """
   end
 
-  attr :new_session, :map, required: true
-
-  def wizard(assigns) do
-    ~H"""
-    <.overlay id="wizard-overlay">
-      <%= case @new_session.phase do %>
-        <% :ready -> %>
-          <.step wizard={@new_session.wizard} error={@new_session.error} />
-        <% :submitting -> %>
-          <div class="px-3 py-2 border-b border-neutral-800 font-semibold shrink-0">New session</div>
-          <p id="wizard-submitting" class="px-3 py-3 text-neutral-500">starting session…</p>
-      <% end %>
-    </.overlay>
-    """
-  end
-
-  attr :wizard, :map, required: true
-  attr :error, :string, default: nil
-
-  defp step(assigns) do
-    assigns =
-      assign(assigns,
-        candidates: NewSessionWizard.candidates(assigns.wizard),
-        hidden: NewSessionWizard.hidden_count(assigns.wizard)
-      )
-
-    ~H"""
-    <div class="px-3 py-2 border-b border-neutral-800 shrink-0 flex items-center justify-between">
-      <span class="font-semibold">New session — Directory</span>
-      <span class="text-xs text-neutral-500">1/1</span>
-    </div>
-
-    <form
-      id="wizard-form"
-      phx-change="wizard_query"
-      phx-submit="wizard_accept"
-      class="px-3 py-2 border-b border-neutral-800 shrink-0"
-    >
-      <input
-        id="wizard-input"
-        type="text"
-        name="query"
-        value={@wizard.query}
-        phx-hook="WizardInput"
-        phx-debounce="120"
-        autocomplete="off"
-        placeholder="Search directories — ~ for home, ../ to go up, or type a full path"
-        class="w-full bg-neutral-950 text-neutral-100 px-2 py-1 outline-none border border-neutral-800 rounded"
-      />
-    </form>
-
-    <p :if={@error} id="wizard-error" class="px-3 pt-2 text-xs text-red-500">{@error}</p>
-    <p :if={@wizard.directories_loading?} class="px-3 pt-2 text-xs text-neutral-500">
-      searching directories…
-    </p>
-
-    <ul id="wizard-candidates" phx-hook="ScrollSelected" class="overflow-y-auto p-1">
-      <li
-        :for={{candidate, index} <- Enum.with_index(@candidates)}
-        id={"wizard-candidate-#{index}"}
-        data-selected={to_string(index == @wizard.selected)}
-        phx-click="wizard_select_index"
-        phx-value-index={index}
-        class={row_classes(index == @wizard.selected)}
-      >
-        <span class="truncate">{candidate.label}</span>
-        <span :if={badge(candidate)} class="ml-auto shrink-0 text-xs text-neutral-500">
-          {badge(candidate)}
-        </span>
-      </li>
-    </ul>
-
-    <p :if={@hidden > 0} id="wizard-more" class="px-3 py-1 text-xs text-neutral-500 shrink-0">
-      and {@hidden} more, keep typing to narrow
-    </p>
-
-    <p class="px-3 py-2 border-t border-neutral-800 text-xs text-neutral-500 shrink-0">
-      ↑↓ move · enter accept · esc cancel
-    </p>
-    """
-  end
-
   slot :inner_block, required: true
   attr :id, :string, required: true
 
-  defp overlay(assigns) do
+  def overlay(assigns) do
     ~H"""
     <div id={@id} class="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-20">
       <div class="bg-neutral-900 border border-neutral-700 rounded-md w-[36rem] max-h-[75vh] flex flex-col">
@@ -271,7 +187,7 @@ defmodule SakWeb.Overlays do
     """
   end
 
-  defp row_classes(selected?) do
+  def row_classes(selected?) do
     [
       "px-2 py-1 flex gap-3 items-baseline cursor-pointer hover:bg-neutral-800",
       selected? && "bg-neutral-800 ring-1 ring-inset ring-neutral-500"
@@ -280,9 +196,4 @@ defmodule SakWeb.Overlays do
 
   defp models_footer(true), do: "↑↓ move · enter use for this session · esc close"
   defp models_footer(false), do: "↑↓ move · enter use for new sessions · esc close"
-
-  defp badge(%{kind: :default}), do: "default"
-  defp badge(%{kind: :project}), do: "project"
-  defp badge(%{kind: :typed}), do: "typed path"
-  defp badge(_candidate), do: nil
 end

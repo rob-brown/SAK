@@ -4,12 +4,24 @@ defmodule SakWeb.ChatLive.Sessions do
   alias Phoenix.Component
   alias Sak.SessionRows
 
+  def refresh(socket) do
+    case client().request("list_conversations", %{}) do
+      {:ok, %{"conversations" => conversations}} ->
+        socket
+        |> Component.assign(conversations: Enum.sort_by(conversations, & &1["id"], :desc))
+        |> rebuild()
+
+      {:error, reason} ->
+        Component.assign(socket, last_error: reason)
+    end
+  end
+
   def rebuild(socket) do
     assigns = socket.assigns
     previous = assigns.session_rows |> Enum.at(assigns.sessions_selected) |> SessionRows.row_key()
 
     {rows, labels} =
-      SessionRows.build(assigns.conversations, assigns.project_labels,
+      SessionRows.build(visible(assigns), assigns.project_labels,
         collapsed: assigns.collapsed_projects
       )
 
@@ -18,6 +30,34 @@ defmodule SakWeb.ChatLive.Sessions do
       project_labels: labels,
       sessions_selected: cursor_after(rows, previous, assigns.sessions_selected)
     )
+  end
+
+  def visible(assigns) do
+    assigns.conversations
+    |> Enum.filter(&shown?(&1, assigns.show_archived?))
+    |> Enum.filter(&matches?(&1, assigns.sessions_filter))
+  end
+
+  def toggle_archived(socket) do
+    socket |> Component.update(:show_archived?, &(!&1)) |> rebuild()
+  end
+
+  def open_filter(socket) do
+    Component.assign(socket, sessions_filter_open?: true)
+  end
+
+  def change_filter(socket, term) do
+    socket |> Component.assign(sessions_filter: term, sessions_selected: 0) |> rebuild()
+  end
+
+  def confirm_filter(socket) do
+    Component.assign(socket, sessions_filter_open?: false)
+  end
+
+  def close_filter(socket) do
+    socket
+    |> Component.assign(sessions_filter_open?: false, sessions_filter: "", sessions_selected: 0)
+    |> rebuild()
   end
 
   def move(socket, delta) do
@@ -67,6 +107,21 @@ defmodule SakWeb.ChatLive.Sessions do
     end
   end
 
+  defp shown?(%{"state" => "archived"}, show_archived?), do: show_archived?
+  defp shown?(_conversation, _show_archived?), do: true
+
+  defp matches?(_conversation, ""), do: true
+
+  defp matches?(conversation, term) do
+    haystack =
+      [conversation["name"], conversation["cwd"], conversation["model"]]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.join(" ")
+      |> String.downcase()
+
+    String.contains?(haystack, String.downcase(term))
+  end
+
   defp toggle_member(set, label) do
     if MapSet.member?(set, label) do
       MapSet.delete(set, label)
@@ -80,5 +135,9 @@ defmodule SakWeb.ChatLive.Sessions do
       nil -> previous_index |> min(max(length(rows) - 1, 0)) |> max(0)
       index -> index
     end
+  end
+
+  defp client do
+    Application.get_env(:sak, :gateway_client, Sak.Gateway)
   end
 end

@@ -8,15 +8,14 @@ test("no modal is open when none of the flags are set", () => {
   assert.equal(isModalOpen({helpOpen: "false", wizardOpen: "false", commandOpen: "false"}), false)
 })
 
-test("help, the wizard and the command bar each count as a modal", () => {
-  assert.equal(isModalOpen({helpOpen: "true"}), true)
-  assert.equal(isModalOpen({modelsOpen: "true"}), true)
-  assert.equal(isModalOpen({wizardOpen: "true"}), true)
-  assert.equal(isModalOpen({commandOpen: "true"}), true)
+test("help, models, wizard, command, rename and delete confirmation each count as a modal", () => {
+  for (const flag of ["helpOpen", "modelsOpen", "wizardOpen", "commandOpen", "renameOpen", "confirmOpen"]) {
+    assert.equal(isModalOpen({[flag]: "true"}), true, flag)
+  }
 })
 
-test("only escape is forwarded to the server while a modal is open", () => {
+test("only the delete confirmation also forwards enter", () => {
   assert.deepEqual(modalKeys({helpOpen: "true"}), ["escape"])
-  assert.deepEqual(modalKeys({wizardOpen: "true"}), ["escape"])
-  assert.deepEqual(modalKeys({commandOpen: "true"}), ["escape"])
+  assert.deepEqual(modalKeys({renameOpen: "true"}), ["escape"])
+  assert.deepEqual(modalKeys({confirmOpen: "true"}), ["escape", "enter"])
 })

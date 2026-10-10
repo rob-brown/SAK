@@ -23,7 +23,10 @@ defmodule Sak.ChatSearch do
   @spec jump([match()], integer() | nil, integer()) :: integer() | nil
   def jump([], _index, _delta), do: nil
   def jump(_matches, nil, _delta), do: 0
-  def jump(matches, index, delta), do: Integer.mod(index + delta, length(matches))
+
+  def jump(matches, index, delta) do
+    Integer.mod(index + delta, length(matches))
+  end
 
   defp item_matches(item, term, opts) do
     item
@@ -37,7 +40,9 @@ defmodule Sak.ChatSearch do
     end)
   end
 
-  defp count(text, term), do: count(text, term, 0, 0)
+  defp count(text, term) do
+    count(text, term, 0, 0)
+  end
 
   defp count(text, term, offset, total) do
     remaining = binary_part(text, offset, byte_size(text) - offset)
@@ -49,5 +54,8 @@ defmodule Sak.ChatSearch do
   end
 
   defp occurrences(0), do: []
-  defp occurrences(count), do: Enum.to_list(0..(count - 1))
+
+  defp occurrences(count) do
+    Enum.to_list(0..(count - 1))
+  end
 end

@@ -54,7 +54,10 @@ defmodule Sak.Markdown do
   end
 
   defp prepend(acc, _text, from, to) when to <= from, do: acc
-  defp prepend(acc, text, from, to), do: [binary_part(text, from, to - from) | acc]
+
+  defp prepend(acc, text, from, to) do
+    [binary_part(text, from, to - from) | acc]
+  end
 
   defp replace_sentinels(html) do
     html

@@ -52,5 +52,8 @@ defmodule Sak.FuzzyMatch do
   defp boolean_bonus(false, _bonus), do: 0
 
   defp finish({_total, _first, _prev, [_ | _]}), do: nil
-  defp finish({total, first, _prev, []}), do: total - (first || 0)
+
+  defp finish({total, first, _prev, []}) do
+    total - (first || 0)
+  end
 end

@@ -3,6 +3,7 @@ defmodule SakWeb.ChatLive.Render do
 
   alias Sak.Chat
   alias Sak.Help
+  alias Sak.NewSessionWizard
   alias SakWeb.ChatLive.Mention
 
   def pane_classes(focused_pane, pane, zoomed_pane \\ nil) do
@@ -30,13 +31,29 @@ defmodule SakWeb.ChatLive.Render do
     ]
   end
 
-  def session_label(session), do: "##{session["id"]}"
+  def session_label(%{"name" => name}) when is_binary(name) and name != "", do: name
+
+  def session_label(session) do
+    "##{session["id"]}"
+  end
+
+  def model_label(%{"model" => model}) when is_binary(model) do
+    case String.split(model, "/", parts: 2) do
+      [_provider, rest] -> rest
+      [only] -> only
+    end
+  end
+
+  def model_label(_session), do: ""
 
   def disclosure(%{collapsed?: true}), do: "▸"
   def disclosure(%{collapsed?: false}), do: "▾"
 
-  def header_label(%{label: ""}), do: "no directory"
-  def header_label(%{label: label}), do: label
+  def header_label(%{label: ""}, _home), do: "no directory"
+
+  def header_label(%{label: label}, home) do
+    NewSessionWizard.tilde(label, home)
+  end
 
   def status_glyph(session, current_id, chat) do
     glyph(running_here?(session, current_id, chat))
@@ -66,9 +83,14 @@ defmodule SakWeb.ChatLive.Render do
 
   def conversation_model(_chat), do: nil
 
-  def mention_results(assigns), do: Mention.results(assigns)
+  def mention_results(assigns) do
+    Mention.results(assigns)
+  end
 
-  def status_line(error, _notice, _id, _chat) when is_binary(error), do: "error: #{error}"
+  def status_line(error, _notice, _id, _chat) when is_binary(error) do
+    "error: #{error}"
+  end
+
   def status_line(_error, notice, _id, _chat) when notice != "", do: notice
   def status_line(_error, _notice, nil, _chat), do: ""
 

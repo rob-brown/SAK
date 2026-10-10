@@ -5,6 +5,7 @@ defmodule SakWeb.ChatLive.Command do
   alias Phoenix.LiveView
   alias Sak.Command
   alias SakWeb.ChatLive.Models
+  alias SakWeb.ChatLive.Sessions
 
   def open(socket) do
     socket |> Component.assign(command_open?: true) |> query("")
@@ -56,8 +57,11 @@ defmodule SakWeb.ChatLive.Command do
     cwd = current_cwd(socket.assigns)
 
     case client().request("create_conversation", %{"cwd" => cwd}) do
-      {:ok, %{"conversationId" => id}} -> LiveView.push_patch(socket, to: "/c/#{id}")
-      {:error, reason} -> Component.assign(socket, last_error: reason)
+      {:ok, %{"conversationId" => id}} ->
+        socket |> Sessions.refresh() |> LiveView.push_patch(to: "/c/#{id}")
+
+      {:error, reason} ->
+        Component.assign(socket, last_error: reason)
     end
   end
 

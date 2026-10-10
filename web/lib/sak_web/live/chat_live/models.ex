@@ -74,28 +74,27 @@ defmodule SakWeb.ChatLive.Models do
           Component.assign(socket, last_error: reason)
       end
 
-    refresh_conversations(socket)
-  end
-
-  defp refresh_conversations(socket) do
-    case client().request("list_conversations", %{}) do
-      {:ok, %{"conversations" => conversations}} ->
-        socket
-        |> Component.assign(conversations: Enum.sort_by(conversations, & &1["id"], :desc))
-        |> Sessions.rebuild()
-
-      _other ->
-        socket
-    end
+    Sessions.refresh(socket)
   end
 
   defp put_conversation(params, nil), do: params
-  defp put_conversation(params, id), do: Map.put(params, "conversationId", id)
 
-  defp notice(model_id, nil), do: "default model for new sessions: #{model_id}"
-  defp notice(model_id, id), do: "session #{id} now uses #{model_id}"
+  defp put_conversation(params, id) do
+    Map.put(params, "conversationId", id)
+  end
 
-  defp current_label(%{"provider" => provider, "modelId" => id}), do: "#{provider}/#{id}"
+  defp notice(model_id, nil) do
+    "default model for new sessions: #{model_id}"
+  end
+
+  defp notice(model_id, id) do
+    "session #{id} now uses #{model_id}"
+  end
+
+  defp current_label(%{"provider" => provider, "modelId" => id}) do
+    "#{provider}/#{id}"
+  end
+
   defp current_label(_current), do: nil
 
   defp client do
