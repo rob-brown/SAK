@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider } from "@earendil-works/pi-ai/providers/faux";
+import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
 import { MemoryStorage } from "@earendil-works/pi-durable/storage/memory";
 import { Gateway } from "../src/gateway.ts";
 import { openHarness } from "../src/open.ts";
@@ -13,12 +16,14 @@ async function setup() {
 	const models = createModels();
 	models.setProvider(faux.provider);
 	const storage = new MemoryStorage();
+	const personasDir = await mkdtemp(join(tmpdir(), "sak-personas-"));
 	const harness = await openHarness(storage, models);
 	const outgoing: Outgoing[] = [];
 	const ensured: string[] = [];
 	const model = faux.getModel();
 	const gateway = new Gateway({
 		cwd: process.cwd(),
+		personasDir,
 		ensureModel: async (modelId) => {
 			ensured.push(modelId);
 		},
@@ -32,7 +37,7 @@ async function setup() {
 		await gateway.close();
 		await harness.close(BACKGROUND_CONTEXT);
 	};
-	return { close, ensured, faux, gateway, outgoing };
+	return { close, ensured, faux, gateway, outgoing, personasDir };
 }
 
 async function waitFor(condition: () => boolean) {
@@ -159,6 +164,130 @@ test("fork keeps the entries up to and including the chosen one and carries the 
 	await close();
 });
 
+async function systemEntry(gateway: Gateway, outgoing: Outgoing[], conversationId: number, id: string) {
+	await gateway.handle({ id, type: "attach", conversationId });
+	const snapshot = outgoing.filter((m) => m.type === "snapshot").pop() as {
+		snapshot: { entries: { kind: string; model: { toolsAdded?: { name: string }[]; sections?: unknown }[] }[] };
+	};
+	return snapshot.snapshot.entries.find((entry) => entry.kind === "pi.system");
+}
+
+test("the default persona offers every tool including codemode and the Pi-style prompt", async () => {
+	// Arrange
+	const { close, faux, gateway, outgoing } = await setup();
+	faux.setResponses([fauxAssistantMessage("hello")]);
+	await gateway.handle({ id: "1", type: "create_conversation", cwd: "/tmp" });
+	const { conversationId } = (reply(outgoing, "1") as { result: { conversationId: number } }).result;
+	await gateway.handle({ id: "2", type: "attach", conversationId });
+	await gateway.handle({ id: "5", type: "submit", conversationId, content: "hi" });
+	await waitFor(() => hasEvent(outgoing, "run_end"));
+
+	// Act
+	const system = await systemEntry(gateway, outgoing, conversationId, "3");
+	await gateway.handle({ id: "4", type: "list_conversations" });
+
+	// Assert
+	const tools = (system?.model[0]?.toolsAdded ?? []).map((tool) => tool.name).sort();
+	assert.deepEqual(tools, ["bash", "codemode", "edit", "read", "write"]);
+	assert.match(JSON.stringify(system), /expert coding assistant/);
+	assert.equal((reply(outgoing, "4") as Listed).result.conversations[0]?.persona, "default");
+	await close();
+});
+
+test("a persona restricts the tools but keeps codemode, and its body becomes the prompt", async () => {
+	// Arrange
+	const { close, faux, gateway, outgoing, personasDir } = await setup();
+	await writeFile(join(personasDir, "reader.md"), "---\nname: reader\ntools: Read\n---\nOnly read; never edit.");
+	faux.setResponses([fauxAssistantMessage("hello")]);
+	await gateway.handle({ id: "1", type: "create_conversation", cwd: "/tmp", persona: "reader" });
+	const { conversationId } = (reply(outgoing, "1") as { result: { conversationId: number } }).result;
+	await gateway.handle({ id: "2", type: "attach", conversationId });
+	await gateway.handle({ id: "5", type: "submit", conversationId, content: "hi" });
+	await waitFor(() => hasEvent(outgoing, "run_end"));
+
+	// Act
+	const system = await systemEntry(gateway, outgoing, conversationId, "3");
+	await gateway.handle({ id: "4", type: "list_conversations" });
+
+	// Assert
+	const tools = (system?.model[0]?.toolsAdded ?? []).map((tool) => tool.name).sort();
+	assert.deepEqual(tools, ["codemode", "read"]);
+	assert.match(JSON.stringify(system), /Only read; never edit\./);
+	assert.doesNotMatch(JSON.stringify(system), /expert coding assistant/);
+	assert.equal((reply(outgoing, "4") as Listed).result.conversations[0]?.persona, "reader");
+	await close();
+});
+
+test("list_personas re-reads the directory each time and an unknown persona is an error", async () => {
+	// Arrange
+	const { close, gateway, outgoing, personasDir } = await setup();
+	await gateway.handle({ id: "1", type: "list_personas" });
+	await writeFile(join(personasDir, "late.md"), "---\nname: late\ndescription: Added later\n---\nBody");
+
+	// Act
+	await gateway.handle({ id: "2", type: "list_personas" });
+	await gateway.handle({ id: "3", type: "create_conversation", persona: "ghost" });
+
+	// Assert
+	type Listed = { result: { personas: { name: string; description: string }[] } };
+	assert.deepEqual((reply(outgoing, "1") as Listed).result.personas.map((p) => p.name), ["default"]);
+	assert.deepEqual((reply(outgoing, "2") as Listed).result.personas.map((p) => p.name), ["default", "late"]);
+	assert.equal((reply(outgoing, "3") as { ok: boolean }).ok, false);
+	await close();
+});
+
+test("the codemode tool runs a script that calls the other tools and returns only its output", async () => {
+	// Arrange
+	const { close, faux, gateway, outgoing } = await setup();
+	const code = "const out = await tools.bash({ command: 'echo from-sandbox' }); text(out.trim()); return 40 + 2;";
+	faux.setResponses([
+		fauxAssistantMessage(fauxToolCall("codemode", { code }), { stopReason: "toolUse" }),
+		fauxAssistantMessage("finished"),
+	]);
+	await gateway.handle({ id: "1", type: "create_conversation", cwd: "/tmp" });
+	const { conversationId } = (reply(outgoing, "1") as { result: { conversationId: number } }).result;
+
+	// Act
+	await gateway.handle({ id: "9", type: "attach", conversationId });
+	await gateway.handle({ id: "2", type: "submit", conversationId, content: "go" });
+	await waitFor(() => JSON.stringify(outgoing).includes("finished"));
+	await gateway.handle({ id: "3", type: "attach", conversationId });
+
+	// Assert
+	const snapshot = outgoing.filter((m) => m.type === "snapshot").pop() as { snapshot: { entries: unknown[] } };
+	const result = snapshot.snapshot.entries.find((entry) => (entry as { kind: string }).kind === "pi.tool-result");
+	const text = JSON.stringify(result);
+	assert.match(text, /Script completed/);
+	assert.match(text, /from-sandbox/);
+	assert.match(text, /42/);
+	await close();
+});
+
+test("a failing script reports the error instead of throwing", async () => {
+	// Arrange
+	const { close, faux, gateway, outgoing } = await setup();
+	faux.setResponses([
+		fauxAssistantMessage(fauxToolCall("codemode", { code: "await tools.read({ path: '/definitely/not/here' });" }), {
+			stopReason: "toolUse",
+		}),
+		fauxAssistantMessage("saw the failure"),
+	]);
+	await gateway.handle({ id: "1", type: "create_conversation", cwd: "/tmp" });
+	const { conversationId } = (reply(outgoing, "1") as { result: { conversationId: number } }).result;
+
+	// Act
+	await gateway.handle({ id: "9", type: "attach", conversationId });
+	await gateway.handle({ id: "2", type: "submit", conversationId, content: "go" });
+	await waitFor(() => JSON.stringify(outgoing).includes("saw the failure"));
+	await gateway.handle({ id: "3", type: "attach", conversationId });
+
+	// Assert
+	const snapshot = outgoing.filter((m) => m.type === "snapshot").pop() as { snapshot: { entries: unknown[] } };
+	const result = snapshot.snapshot.entries.find((entry) => (entry as { kind: string }).kind === "pi.tool-result");
+	assert.match(JSON.stringify(result), /Script failed/);
+	await close();
+});
+
 test("set_model switches one conversation and leaves the others alone", async () => {
 	// Arrange
 	const { close, ensured, gateway, outgoing } = await setup();
@@ -197,7 +326,9 @@ test("set_model without a conversation changes the default for new ones", async 
 	await close();
 });
 
-type Listed = { result: { conversations: { id: number; name: string | null; state: string; model: string }[] } };
+type Listed = {
+	result: { conversations: { id: number; name: string | null; persona: string | null; state: string; model: string }[] };
+};
 
 test("a new conversation can be created with a model and a name", async () => {
 	// Arrange

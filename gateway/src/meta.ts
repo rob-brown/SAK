@@ -4,7 +4,7 @@ import { type Conversation, defineDoc, type Harness } from "@earendil-works/pi-d
 export const STATES = ["active", "archived", "deleted"] as const;
 export type State = (typeof STATES)[number];
 
-export type Meta = { name: string | null; state: State };
+export type Meta = { name: string | null; persona: string | null; state: State };
 
 const MetaDoc = defineDoc<Meta>({
 	kind: "sak.meta",
@@ -12,14 +12,14 @@ const MetaDoc = defineDoc<Meta>({
 	scope: "conversation",
 	history: "latest",
 	fork: "initial",
-	initial: () => ({ name: null, state: "active" }),
+	initial: () => ({ name: null, persona: null, state: "active" }),
 });
 
-const DEFAULT_META: Meta = { name: null, state: "active" };
+const DEFAULT_META: Meta = { name: null, persona: null, state: "active" };
 
 export async function readMeta(harness: Harness, conversationId: number): Promise<Meta> {
 	const stored = await harness.snapshot(MetaDoc, conversationId as never, BACKGROUND_CONTEXT);
-	return stored ? { name: stored.name, state: stored.state } : DEFAULT_META;
+	return stored ? { name: stored.name, persona: stored.persona ?? null, state: stored.state } : DEFAULT_META;
 }
 
 export async function writeMeta(conversation: Conversation, patch: Partial<Meta>): Promise<void> {
@@ -27,5 +27,6 @@ export async function writeMeta(conversation: Conversation, patch: Partial<Meta>
 		const doc = await tx.doc(MetaDoc, conversation.id);
 		if (patch.name !== undefined) doc.name = patch.name;
 		if (patch.state !== undefined) doc.state = patch.state;
+		if (patch.persona !== undefined) doc.persona = patch.persona;
 	}, BACKGROUND_CONTEXT);
 }

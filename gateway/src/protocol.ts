@@ -5,7 +5,8 @@ export type WhenBusy = "followUp" | "reject" | "steer";
 export type Command =
 	| { id: string; type: "abort"; conversationId: number }
 	| { id: string; type: "attach"; conversationId: number }
-	| { id: string; type: "create_conversation"; cwd?: string; modelId?: string; name?: string }
+	| { id: string; type: "create_conversation"; cwd?: string; modelId?: string; name?: string; persona?: string }
+	| { id: string; type: "list_personas" }
 	| { id: string; type: "set_meta"; conversationId: number; name?: string | null; state?: State }
 	| { id: string; type: "detach"; conversationId: number }
 	| { id: string; type: "fork"; conversationId: number; at: number }
@@ -19,6 +20,7 @@ export type ConversationSummary = {
 	cwd: string | null;
 	model: string | null;
 	name: string | null;
+	persona: string | null;
 	state: State;
 };
 

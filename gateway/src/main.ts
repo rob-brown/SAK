@@ -23,6 +23,7 @@ const gateway = new Gateway({
 	harness,
 	listModels: () => listEndpointModels(config.baseUrl, config.apiKey),
 	model: { provider: PROVIDER_ID, modelId: config.modelId },
+	personasDir: config.personasDir,
 	send,
 	storage,
 });

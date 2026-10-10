@@ -10,7 +10,9 @@ import {
 	watchEvents,
 } from "@earendil-works/pi-durable";
 import { readMeta, STATES, writeMeta } from "./meta.ts";
+import { DEFAULT_PERSONA_NAME, findPersona, loadPersonas } from "./personas.ts";
 import type { Command, ConversationSummary, Outgoing } from "./protocol.ts";
+import { toolsNamed } from "./tools.ts";
 
 const context = BACKGROUND_CONTEXT;
 const LIST_LIMIT = 500;
@@ -21,6 +23,7 @@ export type GatewayOptions = {
 	readonly harness: Harness;
 	readonly listModels: () => Promise<readonly string[]>;
 	readonly model: ModelRef;
+	readonly personasDir: string;
 	readonly send: (message: Outgoing) => void;
 	readonly storage: Storage;
 };
@@ -64,6 +67,8 @@ export class Gateway {
 				return this.fork(command.conversationId, command.at);
 			case "list_conversations":
 				return this.list();
+			case "list_personas":
+				return this.personas();
 			case "list_models":
 				return this.models();
 			case "set_meta":
@@ -110,17 +115,27 @@ export class Gateway {
 		return {};
 	}
 
+	private async personas() {
+		return { personas: await loadPersonas(this.options.personasDir) };
+	}
+
 	private async create(command: Extract<Command, { type: "create_conversation" }>) {
-		const model = await this.modelFor(command.modelId);
+		const persona = await findPersona(this.options.personasDir, command.persona ?? DEFAULT_PERSONA_NAME);
+		const model = await this.modelFor(command.modelId ?? persona.model ?? undefined);
 		const conversation = await this.options.harness.createConversation(
 			{
 				ownership: { kind: "ownerless" },
-				agent: { model, cwd: command.cwd ?? this.options.cwd },
+				agent: {
+					model,
+					cwd: command.cwd ?? this.options.cwd,
+					instructions: persona.instructions,
+					...(persona.tools ? { tools: toolsNamed(persona.tools) } : {}),
+				},
 			},
 			context,
 		);
 		const name = command.name?.trim();
-		if (name) await writeMeta(conversation, { name });
+		await writeMeta(conversation, { persona: persona.name, ...(name ? { name } : {}) });
 		return { conversationId: conversation.id };
 	}
 
@@ -183,6 +198,7 @@ export class Gateway {
 			cwd: agent.cwd ?? null,
 			model: agent.model ? `${agent.model.provider}/${agent.model.modelId}` : null,
 			name: meta.name,
+			persona: meta.persona,
 			state: meta.state,
 		};
 	}
