@@ -150,7 +150,7 @@ defmodule SakWeb.ChatLive do
       help_search: "",
       models: nil,
       new_session: nil,
-      confirm_delete: nil,
+      confirm: nil,
       rename: nil,
       command_open?: false,
       command_query: "",

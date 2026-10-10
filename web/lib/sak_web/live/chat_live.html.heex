@@ -7,7 +7,7 @@
     data-help-open={to_string(@help_open?)}
     data-models-open={to_string(@models != nil)}
     data-wizard-open={to_string(@new_session != nil)}
-    data-confirm-open={to_string(@confirm_delete != nil)}
+    data-confirm-open={to_string(@confirm != nil)}
     data-rename-open={to_string(@rename != nil)}
     data-command-open={to_string(@command_open?)}
     class="flex flex-col h-screen bg-neutral-950 text-neutral-100 font-mono text-sm"
@@ -323,7 +323,7 @@
       has_conversation?={@current_id != nil}
     />
     <.wizard :if={@new_session} new_session={@new_session} />
-    <.confirm_delete :if={@confirm_delete} confirm={@confirm_delete} />
+    <.confirm :if={@confirm} confirm={@confirm} />
     <.rename :if={@rename} rename={@rename} />
     <.command
       :if={@command_open?}

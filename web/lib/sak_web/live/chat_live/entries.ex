@@ -4,6 +4,7 @@ defmodule SakWeb.ChatLive.Entries do
   alias Phoenix.Component
   alias Phoenix.LiveView
   alias Sak.EntryRows
+  alias SakWeb.ChatLive.Confirm
   alias SakWeb.ChatLive.Render
   alias SakWeb.ChatLive.Sessions
 
@@ -82,8 +83,11 @@ defmodule SakWeb.ChatLive.Entries do
 
   def fork(%{assigns: %{current_id: id}} = socket) when is_integer(id) do
     case selected_row(socket.assigns) do
-      nil -> socket
-      row -> fork_at(socket, id, row)
+      nil ->
+        socket
+
+      row ->
+        Confirm.ask(socket, %{action: :fork, id: id, row: row, label: label(socket.assigns, id)})
     end
   end
 
@@ -93,7 +97,7 @@ defmodule SakWeb.ChatLive.Entries do
     Enum.at(assigns.entry_rows, assigns.entries_selected)
   end
 
-  defp fork_at(socket, id, row) do
+  def fork_at(socket, id, row) do
     case client().request("fork", %{"conversationId" => id, "at" => row.id}) do
       {:ok, %{"conversationId" => forked}} ->
         socket
@@ -107,10 +111,11 @@ defmodule SakWeb.ChatLive.Entries do
   end
 
   defp notice(assigns, id, row) do
-    label =
-      Render.session_label(Enum.find(assigns.conversations, &(&1["id"] == id)) || %{"id" => id})
+    "forked #{label(assigns, id)} at entry #{row.number} (id #{row.id})"
+  end
 
-    "forked #{label} at entry #{row.number} (id #{row.id})"
+  defp label(assigns, id) do
+    Render.session_label(Enum.find(assigns.conversations, &(&1["id"] == id)) || %{"id" => id})
   end
 
   defp toggle_member(set, id) do

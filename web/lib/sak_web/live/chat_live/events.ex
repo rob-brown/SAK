@@ -4,6 +4,7 @@ defmodule SakWeb.ChatLive.Events do
   import Phoenix.Component, only: [assign: 2]
 
   alias SakWeb.ChatLive.Command
+  alias SakWeb.ChatLive.Confirm
   alias SakWeb.ChatLive.Keys
   alias SakWeb.ChatLive.Manage
   alias SakWeb.ChatLive.Mention
@@ -80,12 +81,12 @@ defmodule SakWeb.ChatLive.Events do
     Sessions.confirm_filter(socket)
   end
 
-  def handle("delete_confirm", _params, socket) do
-    Manage.confirm_delete(socket)
+  def handle("confirm_accept", _params, socket) do
+    Confirm.accept(socket)
   end
 
-  def handle("delete_cancel", _params, socket) do
-    Manage.cancel_delete(socket)
+  def handle("confirm_cancel", _params, socket) do
+    Confirm.cancel(socket)
   end
 
   def handle("rename_save", %{"name" => name}, socket) do

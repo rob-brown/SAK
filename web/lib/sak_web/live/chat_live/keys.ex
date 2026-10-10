@@ -7,6 +7,7 @@ defmodule SakWeb.ChatLive.Keys do
   import Phoenix.LiveView, only: [push_patch: 2]
 
   alias SakWeb.ChatLive.Command
+  alias SakWeb.ChatLive.Confirm
   alias SakWeb.ChatLive.Entries
   alias SakWeb.ChatLive.Items
   alias SakWeb.ChatLive.Manage
@@ -39,7 +40,7 @@ defmodule SakWeb.ChatLive.Keys do
   defp modal(%{help_open?: true}), do: :help
   defp modal(%{models: %{}}), do: :models
   defp modal(%{new_session: %{}}), do: :wizard
-  defp modal(%{confirm_delete: %{}}), do: :confirm_delete
+  defp modal(%{confirm: %{}}), do: :confirm
   defp modal(%{rename: %{}}), do: :rename
   defp modal(%{command_open?: true}), do: :command
   defp modal(%{chat_search_open?: true}), do: :chat_search
@@ -58,12 +59,12 @@ defmodule SakWeb.ChatLive.Keys do
     NewSession.back(socket)
   end
 
-  defp modal_key(:confirm_delete, "escape", socket) do
-    Manage.cancel_delete(socket)
+  defp modal_key(:confirm, "escape", socket) do
+    Confirm.cancel(socket)
   end
 
-  defp modal_key(:confirm_delete, "enter", socket) do
-    Manage.confirm_delete(socket)
+  defp modal_key(:confirm, "enter", socket) do
+    Confirm.accept(socket)
   end
 
   defp modal_key(:rename, "escape", socket) do

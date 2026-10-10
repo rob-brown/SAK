@@ -87,7 +87,7 @@ defmodule SakWeb.SessionsManagementTest do
     refute has_element?(view, "#conversation-3")
   end
 
-  test "a archives immediately and R restores, each only from the matching state", %{conn: conn} do
+  test "a asks first and archives only on enter, and R restores without asking", %{conn: conn} do
     # Arrange
     {:ok, view, _html} = live(conn, ~p"/")
     cursor_to(view, 2)
@@ -96,12 +96,20 @@ defmodule SakWeb.SessionsManagementTest do
     press(view, "R")
     refute_received {:gateway_request, "set_meta", _}
     press(view, "a")
+    asked = has_element?(view, "#confirm-dialog", "Archive session Fix login?")
+    press(view, "escape")
+    cancelled = not has_element?(view, "#confirm-dialog")
+    press(view, "a")
+    press(view, "enter")
 
     # Assert
+    assert asked
+    assert cancelled
+
     assert_received {:gateway_request, "set_meta",
                      %{"conversationId" => 1, "state" => "archived"}}
 
-    refute has_element?(view, "#delete-confirm")
+    refute_received {:gateway_request, "set_meta", _}
 
     # Arrange
     press(view, "A")
@@ -109,11 +117,25 @@ defmodule SakWeb.SessionsManagementTest do
 
     # Act
     press(view, "a")
-    refute_received {:gateway_request, "set_meta", _}
+    refute has_element?(view, "#confirm-dialog")
     press(view, "R")
 
     # Assert
     assert_received {:gateway_request, "set_meta", %{"conversationId" => 3, "state" => "active"}}
+  end
+
+  test "cancelling the archive confirmation sends nothing", %{conn: conn} do
+    # Arrange
+    {:ok, view, _html} = live(conn, ~p"/")
+    cursor_to(view, 2)
+    press(view, "a")
+
+    # Act
+    view |> element("#confirm-no") |> render_click()
+
+    # Assert
+    refute has_element?(view, "#confirm-dialog")
+    refute_received {:gateway_request, "set_meta", _}
   end
 
   test "d asks first and only deletes on enter", %{conn: conn} do
@@ -123,9 +145,9 @@ defmodule SakWeb.SessionsManagementTest do
 
     # Act
     press(view, "d")
-    asked = has_element?(view, "#delete-confirm")
+    asked = has_element?(view, "#confirm-dialog", "Delete session")
     press(view, "escape")
-    cancelled = not has_element?(view, "#delete-confirm")
+    cancelled = not has_element?(view, "#confirm-dialog")
     press(view, "d")
     press(view, "enter")
 
@@ -133,7 +155,7 @@ defmodule SakWeb.SessionsManagementTest do
     assert asked
     assert cancelled
     assert_received {:gateway_request, "set_meta", %{"conversationId" => 2, "state" => "deleted"}}
-    refute has_element?(view, "#delete-confirm")
+    refute has_element?(view, "#confirm-dialog")
   end
 
   test "r renames the selected session and an empty name clears it", %{conn: conn} do

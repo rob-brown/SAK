@@ -6,7 +6,7 @@ defmodule Sak.Hints do
     cond do
       assigns.help_open? -> [{"Close", "<esc>"}]
       assigns.models != nil -> [{"Close", "<esc>"}]
-      assigns.confirm_delete != nil -> [{"Delete", "<enter>"}, {"Cancel", "<esc>"}]
+      assigns.confirm != nil -> [{"Confirm", "<enter>"}, {"Cancel", "<esc>"}]
       assigns.rename != nil -> []
       assigns.sessions_filter_open? -> []
       assigns.new_session != nil -> []

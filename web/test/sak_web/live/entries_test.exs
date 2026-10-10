@@ -137,7 +137,7 @@ defmodule SakWeb.EntriesTest do
     refute has_element?(view, "#history-row-11 pre")
   end
 
-  test "f forks from the selected entry and opens the new session", %{conn: conn} do
+  test "f asks first and forks from the selected entry only on enter", %{conn: conn} do
     # Arrange
     view = open_entries(conn)
     press(view, "g")
@@ -146,11 +146,34 @@ defmodule SakWeb.EntriesTest do
 
     # Act
     press(view, "f")
+    asked = has_element?(view, "#confirm-dialog", "Fork Parent at entry 3?")
+
+    sent_before =
+      Process.info(self(), :messages)
+      |> elem(1)
+      |> Enum.any?(&match?({:gateway_request, "fork", _}, &1))
+
+    press(view, "enter")
 
     # Assert
+    assert asked
+    refute sent_before
     assert_received {:gateway_request, "fork", %{"conversationId" => 1, "at" => 12}}
     assert_patch(view, ~p"/c/7")
     assert has_element?(view, "#status-line", "forked Parent at entry 3 (id 12)")
+  end
+
+  test "cancelling the fork confirmation creates nothing", %{conn: conn} do
+    # Arrange
+    view = open_entries(conn)
+    press(view, "f")
+
+    # Act
+    press(view, "escape")
+
+    # Assert
+    refute has_element?(view, "#confirm-dialog")
+    refute_received {:gateway_request, "fork", _}
   end
 
   test "the entries tab is reset when another session is opened", %{conn: conn} do

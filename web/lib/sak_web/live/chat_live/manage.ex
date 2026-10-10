@@ -2,45 +2,27 @@ defmodule SakWeb.ChatLive.Manage do
   @moduledoc false
 
   alias Phoenix.Component
-  alias Phoenix.LiveView
+  alias SakWeb.ChatLive.Confirm
   alias SakWeb.ChatLive.Render
   alias SakWeb.ChatLive.Sessions
 
   def archive(socket) do
-    change_state(socket, "active", "archived")
-  end
-
-  def restore(socket) do
-    change_state(socket, "archived", "active")
+    ask(socket, "active", :archive)
   end
 
   def ask_delete(socket) do
-    case Sessions.cursor_row(socket.assigns) do
-      {:session, session} ->
-        Component.assign(socket,
-          confirm_delete: %{
-            id: session["id"],
-            label: Render.session_label(session),
-            cwd: session["cwd"]
-          }
-        )
+    ask(socket, nil, :delete)
+  end
 
-      _header_or_nothing ->
-        socket
+  def restore(socket) do
+    case Sessions.cursor_row(socket.assigns) do
+      {:session, %{"state" => "archived"} = session} -> set_state(socket, session["id"], "active")
+      _other_state_or_header -> socket
     end
   end
 
-  def confirm_delete(%{assigns: %{confirm_delete: %{id: id}}} = socket) do
-    socket
-    |> Component.assign(confirm_delete: nil)
-    |> update_meta(id, %{"state" => "deleted"})
-    |> leave_if_open(id)
-  end
-
-  def confirm_delete(socket), do: socket
-
-  def cancel_delete(socket) do
-    Component.assign(socket, confirm_delete: nil)
+  def set_state(socket, id, state) do
+    update_meta(socket, id, %{"state" => state})
   end
 
   def ask_rename(socket) do
@@ -63,12 +45,21 @@ defmodule SakWeb.ChatLive.Manage do
     Component.assign(socket, rename: nil)
   end
 
-  defp change_state(socket, from, to) do
+  defp ask(socket, required_state, action) do
     case Sessions.cursor_row(socket.assigns) do
-      {:session, %{"state" => ^from} = session} ->
-        update_meta(socket, session["id"], %{"state" => to})
+      {:session, session} ->
+        if required_state in [nil, session["state"]] do
+          Confirm.ask(socket, %{
+            action: action,
+            id: session["id"],
+            label: Render.session_label(session),
+            cwd: session["cwd"]
+          })
+        else
+          socket
+        end
 
-      _other_state_or_header ->
+      _header_or_nothing ->
         socket
     end
   end
@@ -79,12 +70,6 @@ defmodule SakWeb.ChatLive.Manage do
       {:error, reason} -> Component.assign(socket, last_error: reason)
     end
   end
-
-  defp leave_if_open(%{assigns: %{current_id: id}} = socket, id) do
-    LiveView.push_patch(socket, to: "/")
-  end
-
-  defp leave_if_open(socket, _id), do: socket
 
   defp client do
     Application.get_env(:sak, :gateway_client, Sak.Gateway)
