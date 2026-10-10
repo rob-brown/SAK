@@ -19,7 +19,7 @@ export function defaultInstructions(toolNames: readonly string[]): string {
 	].flatMap((rule) => (rule ? [`- ${rule}`] : []));
 
 	return [
-		"You are an expert coding assistant operating inside Sak, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.",
+		"You are an expert coding assistant operating inside SAK, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.",
 		`Available tools:\n${tools}\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.`,
 		`Guidelines:\n${rules.join("\n")}`,
 	].join("\n\n");
