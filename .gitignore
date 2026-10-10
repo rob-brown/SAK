@@ -1,0 +1,15 @@
+node_modules/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.jsonl
+.DS_Store
+.env
+.env.*
+
+web/_build/
+web/deps/
+web/priv/static/assets/
+web/tmp/
+web/erl_crash.dump
+web/*.ez
