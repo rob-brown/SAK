@@ -4,13 +4,14 @@ import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite
 import { listEndpointModels } from "./endpoint.ts";
 import { loadConfig } from "./config.ts";
 import { Gateway } from "./gateway.ts";
-import { createConfiguredModels, PROVIDER_ID } from "./models.ts";
+import { ModelCatalog, PROVIDER_ID } from "./models.ts";
 import { openHarness } from "./open.ts";
 import type { Command, Outgoing } from "./protocol.ts";
 
 const config = loadConfig(process.env);
 const storage = await openNodeSqliteStorage(config.dbPath);
-const harness = await openHarness(storage, createConfiguredModels(config));
+const catalog = new ModelCatalog(config);
+const harness = await openHarness(storage, catalog.models);
 
 const send = (message: Outgoing) => {
 	process.stdout.write(`${JSON.stringify(message)}\n`);
@@ -18,6 +19,7 @@ const send = (message: Outgoing) => {
 
 const gateway = new Gateway({
 	cwd: config.cwd,
+	ensureModel: (modelId) => catalog.ensure(modelId),
 	harness,
 	listModels: () => listEndpointModels(config.baseUrl, config.apiKey),
 	model: { provider: PROVIDER_ID, modelId: config.modelId },

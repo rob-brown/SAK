@@ -16,6 +16,7 @@ const LIST_LIMIT = 500;
 
 export type GatewayOptions = {
 	readonly cwd: string;
+	readonly ensureModel: (modelId: string) => Promise<void>;
 	readonly harness: Harness;
 	readonly listModels: () => Promise<readonly string[]>;
 	readonly model: ModelRef;
@@ -24,11 +25,13 @@ export type GatewayOptions = {
 };
 
 export class Gateway {
+	private defaultModel: ModelRef;
 	private readonly options: GatewayOptions;
 	private readonly watchers = new Map<number, AgentEventStream>();
 
 	constructor(options: GatewayOptions) {
 		this.options = options;
+		this.defaultModel = options.model;
 	}
 
 	async handle(command: Command): Promise<void> {
@@ -62,13 +65,28 @@ export class Gateway {
 				return this.list();
 			case "list_models":
 				return this.models();
+			case "set_model":
+				return this.setModel(command.modelId, command.conversationId);
 			case "submit":
 				return this.submit(command);
 		}
 	}
 
 	private async models() {
-		return { current: this.options.model, models: await this.options.listModels() };
+		return { current: this.defaultModel, models: await this.options.listModels() };
+	}
+
+	private async setModel(modelId: string, conversationId: number | undefined) {
+		await this.options.ensureModel(modelId);
+		const model = { provider: this.defaultModel.provider, modelId };
+		if (conversationId === undefined) {
+			this.defaultModel = model;
+			return {};
+		}
+		const conversation = await this.conversation(conversationId);
+		await conversation.configure({ model }, context);
+		if (this.watchers.has(conversationId)) await this.attach(conversationId);
+		return {};
 	}
 
 	private async abort(conversationId: number) {
@@ -93,7 +111,7 @@ export class Gateway {
 		const conversation = await this.options.harness.createConversation(
 			{
 				ownership: { kind: "ownerless" },
-				agent: { model: this.options.model, cwd: cwd ?? this.options.cwd },
+				agent: { model: this.defaultModel, cwd: cwd ?? this.options.cwd },
 			},
 			context,
 		);

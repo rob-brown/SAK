@@ -107,6 +107,7 @@ defmodule SakWeb.Overlays do
 
   attr :models, :map, required: true
   attr :conversation_model, :string, default: nil
+  attr :has_conversation?, :boolean, default: false
 
   def models(assigns) do
     assigns = assign(assigns, visible: SakWeb.ChatLive.Models.visible(assigns.models))
@@ -131,6 +132,7 @@ defmodule SakWeb.Overlays do
       <form
         id="models-search-form"
         phx-change="models_search"
+        phx-submit="models_pick"
         class="px-3 py-2 border-b border-neutral-800 shrink-0"
       >
         <input
@@ -138,7 +140,8 @@ defmodule SakWeb.Overlays do
           type="text"
           name="query"
           value={@models.query}
-          phx-hook="AutoFocus"
+          phx-hook="ModelsInput"
+          phx-debounce="120"
           placeholder="Search models"
           autocomplete="off"
           class="w-full bg-neutral-950 text-neutral-100 px-2 py-1 outline-none border border-neutral-800 rounded"
@@ -147,11 +150,14 @@ defmodule SakWeb.Overlays do
 
       <p :if={@visible == []} id="models-empty" class="px-3 py-3 text-neutral-500">no matches</p>
 
-      <ul id="models-list" class="overflow-y-auto p-1">
+      <ul id="models-list" phx-hook="ScrollSelected" class="overflow-y-auto p-1">
         <li
           :for={{id, index} <- Enum.with_index(@visible)}
           id={"model-#{index}"}
-          class="px-2 py-1 flex gap-3"
+          data-selected={to_string(index == @models.selected)}
+          phx-click="models_pick_index"
+          phx-value-index={index}
+          class={row_classes(index == @models.selected)}
         >
           <span class="truncate">{id}</span>
           <span
@@ -162,6 +168,10 @@ defmodule SakWeb.Overlays do
           </span>
         </li>
       </ul>
+
+      <p class="px-3 py-2 border-t border-neutral-800 text-xs text-neutral-500 shrink-0">
+        {models_footer(@has_conversation?)}
+      </p>
     </.overlay>
     """
   end
@@ -267,6 +277,9 @@ defmodule SakWeb.Overlays do
       selected? && "bg-neutral-800 ring-1 ring-inset ring-neutral-500"
     ]
   end
+
+  defp models_footer(true), do: "↑↓ move · enter use for this session · esc close"
+  defp models_footer(false), do: "↑↓ move · enter use for new sessions · esc close"
 
   defp badge(%{kind: :default}), do: "default"
   defp badge(%{kind: :project}), do: "project"

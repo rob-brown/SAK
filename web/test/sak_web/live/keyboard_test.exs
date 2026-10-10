@@ -227,6 +227,55 @@ defmodule SakWeb.KeyboardTest do
     refute has_element?(view, "#models-overlay")
   end
 
+  test "picking a model sets it for the open conversation", %{conn: conn} do
+    # Arrange
+    Application.put_env(:sak, :fake_gateway_replies, %{
+      "list_conversations" => {:ok, %{"conversations" => @conversations}},
+      "list_models" =>
+        {:ok,
+         %{
+           "current" => %{"provider" => "openai-compatible", "modelId" => "ornith"},
+           "models" => ["ornith", "qwen"]
+         }}
+    })
+
+    {:ok, view, _html} = live(conn, ~p"/c/1")
+    press(view, ":")
+    view |> form("#command-form", %{"query" => "model"}) |> render_change()
+    view |> form("#command-form") |> render_submit()
+
+    # Act
+    render_hook(view, "models_move", %{"delta" => 1})
+    view |> form("#models-search-form") |> render_submit()
+
+    # Assert
+    assert_received {:gateway_request, "set_model", %{"modelId" => "qwen", "conversationId" => 1}}
+    refute has_element?(view, "#models-overlay")
+    assert has_element?(view, "#status-line", "session 1 now uses qwen")
+  end
+
+  test "picking a model with no conversation open sets the default for new ones", %{conn: conn} do
+    # Arrange
+    Application.put_env(:sak, :fake_gateway_replies, %{
+      "list_conversations" => {:ok, %{"conversations" => @conversations}},
+      "list_models" =>
+        {:ok, %{"current" => %{"provider" => "p", "modelId" => "a"}, "models" => ["a", "b"]}}
+    })
+
+    {:ok, view, _html} = live(conn, ~p"/")
+    press(view, ":")
+    view |> form("#command-form", %{"query" => "model"}) |> render_change()
+    view |> form("#command-form") |> render_submit()
+
+    # Act
+    view |> element("#model-1") |> render_click()
+
+    # Assert
+    assert_received {:gateway_request, "set_model", params}
+    assert params == %{"modelId" => "b"}
+    assert has_element?(view, "#status-line", "default model for new sessions: b")
+  end
+
   test "z zooms the focused pane and numbers focus panes", %{conn: conn} do
     # Arrange
     {:ok, view, _html} = live(conn, ~p"/")

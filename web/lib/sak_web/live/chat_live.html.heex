@@ -217,7 +217,12 @@
       </button>
     </div>
 
-    <.models :if={@models} models={@models} conversation_model={conversation_model(@chat)} />
+    <.models
+      :if={@models}
+      models={@models}
+      conversation_model={conversation_model(@chat)}
+      has_conversation?={@current_id != nil}
+    />
     <.wizard :if={@new_session} new_session={@new_session} />
     <.command
       :if={@command_open?}

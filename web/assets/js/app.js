@@ -28,6 +28,7 @@ import AutoFocus from "./hooks/auto_focus"
 import {ChatScroll} from "./hooks/chat_scroll"
 import CommandInput from "./hooks/command_input"
 import KeyRouter from "./hooks/key_router"
+import ModelsInput from "./hooks/models_input"
 import PromptBox from "./hooks/prompt_box"
 import ScrollSelected from "./hooks/scroll_selected"
 import WizardInput from "./hooks/wizard_input"
@@ -42,6 +43,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ChatScroll,
     CommandInput,
     KeyRouter,
+    ModelsInput,
     PromptBox,
     ScrollSelected,
     WizardInput,

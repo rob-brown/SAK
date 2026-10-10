@@ -15,9 +15,13 @@ async function setup() {
 	const storage = new MemoryStorage();
 	const harness = await openHarness(storage, models);
 	const outgoing: Outgoing[] = [];
+	const ensured: string[] = [];
 	const model = faux.getModel();
 	const gateway = new Gateway({
 		cwd: process.cwd(),
+		ensureModel: async (modelId) => {
+			ensured.push(modelId);
+		},
 		harness,
 		listModels: async () => ["alpha", "beta"],
 		model: { provider: model.provider, modelId: model.id },
@@ -28,7 +32,7 @@ async function setup() {
 		await gateway.close();
 		await harness.close(BACKGROUND_CONTEXT);
 	};
-	return { close, faux, gateway, outgoing };
+	return { close, ensured, faux, gateway, outgoing };
 }
 
 async function waitFor(condition: () => boolean) {
@@ -120,6 +124,44 @@ test("attaching twice sends a fresh snapshot each time", async () => {
 
 	// Assert
 	assert.equal(outgoing.filter((message) => message.type === "snapshot").length, 2);
+	await close();
+});
+
+test("set_model switches one conversation and leaves the others alone", async () => {
+	// Arrange
+	const { close, ensured, gateway, outgoing } = await setup();
+	await gateway.handle({ id: "1", type: "create_conversation", cwd: "/tmp" });
+	await gateway.handle({ id: "2", type: "create_conversation", cwd: "/tmp" });
+	const first = (reply(outgoing, "1") as { result: { conversationId: number } }).result.conversationId;
+
+	// Act
+	await gateway.handle({ id: "3", type: "set_model", conversationId: first, modelId: "other" });
+	await gateway.handle({ id: "4", type: "list_conversations" });
+
+	// Assert
+	const listed = reply(outgoing, "4") as { result: { conversations: { id: number; model: string }[] } };
+	const models = Object.fromEntries(listed.result.conversations.map((c) => [c.id, c.model.split("/").pop()]));
+	assert.equal(models[first], "other");
+	assert.equal(Object.values(models).filter((model) => model === "other").length, 1);
+	assert.deepEqual(ensured, ["other"]);
+	await close();
+});
+
+test("set_model without a conversation changes the default for new ones", async () => {
+	// Arrange
+	const { close, gateway, outgoing } = await setup();
+
+	// Act
+	await gateway.handle({ id: "1", type: "set_model", modelId: "other" });
+	await gateway.handle({ id: "2", type: "list_models" });
+	await gateway.handle({ id: "3", type: "create_conversation", cwd: "/tmp" });
+	await gateway.handle({ id: "4", type: "list_conversations" });
+
+	// Assert
+	const current = (reply(outgoing, "2") as { result: { current: { modelId: string } } }).result.current;
+	const listed = reply(outgoing, "4") as { result: { conversations: { model: string }[] } };
+	assert.equal(current.modelId, "other");
+	assert.ok(listed.result.conversations[0]?.model.endsWith("/other"));
 	await close();
 });
 

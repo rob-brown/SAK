@@ -208,6 +208,18 @@ defmodule SakWeb.ChatLive do
     {:noreply, Models.search(socket, query)}
   end
 
+  def handle_event("models_move", %{"delta" => delta}, socket) do
+    {:noreply, Models.move(socket, delta)}
+  end
+
+  def handle_event("models_pick", _params, socket) do
+    {:noreply, Models.pick(socket)}
+  end
+
+  def handle_event("models_pick_index", %{"index" => index}, socket) do
+    {:noreply, Models.pick_index(socket, String.to_integer(index))}
+  end
+
   def handle_event("close_models", _params, socket) do
     {:noreply, Models.close(socket)}
   end
@@ -409,7 +421,13 @@ defmodule SakWeb.ChatLive do
 
   defp select(socket, id) do
     socket
-    |> assign(current_id: id, chat: %Chat{}, last_error: nil, focused_pane: :chat_history)
+    |> assign(
+      current_id: id,
+      chat: %Chat{},
+      last_error: nil,
+      last_notice: "",
+      focused_pane: :chat_history
+    )
     |> assign(zoomed_pane: nil)
     |> Items.refresh()
     |> attach()
@@ -444,7 +462,10 @@ defmodule SakWeb.ChatLive do
       "requestId" => request_id()
     }
 
-    socket |> request("submit", params) |> update(:form_generation, &(&1 + 1))
+    socket
+    |> assign(last_notice: "")
+    |> request("submit", params)
+    |> update(:form_generation, &(&1 + 1))
   end
 
   defp when_busy("follow_up"), do: "followUp"
