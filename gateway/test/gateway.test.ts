@@ -165,6 +165,61 @@ test("set_model without a conversation changes the default for new ones", async 
 	await close();
 });
 
+type Listed = { result: { conversations: { id: number; name: string | null; state: string; model: string }[] } };
+
+test("a new conversation can be created with a model and a name", async () => {
+	// Arrange
+	const { close, ensured, gateway, outgoing } = await setup();
+
+	// Act
+	await gateway.handle({ id: "1", type: "create_conversation", cwd: "/tmp", modelId: "other", name: "  Refactor  " });
+	await gateway.handle({ id: "2", type: "list_conversations" });
+
+	// Assert
+	const [listed] = (reply(outgoing, "2") as Listed).result.conversations;
+	assert.equal(listed?.name, "Refactor");
+	assert.equal(listed?.state, "active");
+	assert.ok(listed?.model.endsWith("/other"));
+	assert.deepEqual(ensured, ["other"]);
+	await close();
+});
+
+test("archived conversations stay listed with their state and deleted ones disappear", async () => {
+	// Arrange
+	const { close, gateway, outgoing } = await setup();
+	for (const id of ["1", "2", "3"]) await gateway.handle({ id, type: "create_conversation" });
+	const ids = ["1", "2", "3"].map((id) => (reply(outgoing, id) as { result: { conversationId: number } }).result.conversationId);
+
+	// Act
+	await gateway.handle({ id: "4", type: "set_meta", conversationId: ids[1] as number, state: "archived" });
+	await gateway.handle({ id: "5", type: "set_meta", conversationId: ids[2] as number, state: "deleted" });
+	await gateway.handle({ id: "6", type: "set_meta", conversationId: ids[0] as number, name: "Named" });
+	await gateway.handle({ id: "7", type: "list_conversations" });
+
+	// Assert
+	const conversations = (reply(outgoing, "7") as Listed).result.conversations;
+	const byId = Object.fromEntries(conversations.map((c) => [c.id, [c.state, c.name]]));
+	assert.deepEqual(byId, { [ids[0] as number]: ["active", "Named"], [ids[1] as number]: ["archived", null] });
+	await close();
+});
+
+test("set_meta rejects an unknown state and an empty name clears the name", async () => {
+	// Arrange
+	const { close, gateway, outgoing } = await setup();
+	await gateway.handle({ id: "1", type: "create_conversation", name: "Old" });
+	const id = (reply(outgoing, "1") as { result: { conversationId: number } }).result.conversationId;
+
+	// Act
+	await gateway.handle({ id: "2", type: "set_meta", conversationId: id, state: "bogus" as never });
+	await gateway.handle({ id: "3", type: "set_meta", conversationId: id, name: "  " });
+	await gateway.handle({ id: "4", type: "list_conversations" });
+
+	// Assert
+	assert.equal((reply(outgoing, "2") as { ok: boolean }).ok, false);
+	assert.equal((reply(outgoing, "4") as Listed).result.conversations[0]?.name, null);
+	await close();
+});
+
 test("list_models returns the configured model and the endpoint's models", async () => {
 	// Arrange
 	const { close, gateway, outgoing } = await setup();

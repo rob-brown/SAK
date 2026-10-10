@@ -1,9 +1,12 @@
+import type { State } from "./meta.ts";
+
 export type WhenBusy = "followUp" | "reject" | "steer";
 
 export type Command =
 	| { id: string; type: "abort"; conversationId: number }
 	| { id: string; type: "attach"; conversationId: number }
-	| { id: string; type: "create_conversation"; cwd?: string }
+	| { id: string; type: "create_conversation"; cwd?: string; modelId?: string; name?: string }
+	| { id: string; type: "set_meta"; conversationId: number; name?: string | null; state?: State }
 	| { id: string; type: "detach"; conversationId: number }
 	| { id: string; type: "fork"; conversationId: number; at: number }
 	| { id: string; type: "list_conversations" }
@@ -15,6 +18,8 @@ export type ConversationSummary = {
 	id: number;
 	cwd: string | null;
 	model: string | null;
+	name: string | null;
+	state: State;
 };
 
 export type Outgoing =

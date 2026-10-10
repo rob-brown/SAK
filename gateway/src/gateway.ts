@@ -9,6 +9,7 @@ import {
 	type Storage,
 	watchEvents,
 } from "@earendil-works/pi-durable";
+import { readMeta, STATES, writeMeta } from "./meta.ts";
 import type { Command, ConversationSummary, Outgoing } from "./protocol.ts";
 
 const context = BACKGROUND_CONTEXT;
@@ -56,7 +57,7 @@ export class Gateway {
 			case "attach":
 				return this.attach(command.conversationId);
 			case "create_conversation":
-				return this.create(command.cwd);
+				return this.create(command);
 			case "detach":
 				return this.detach(command.conversationId);
 			case "fork":
@@ -65,6 +66,8 @@ export class Gateway {
 				return this.list();
 			case "list_models":
 				return this.models();
+			case "set_meta":
+				return this.setMeta(command);
 			case "set_model":
 				return this.setModel(command.modelId, command.conversationId);
 			case "submit":
@@ -107,15 +110,34 @@ export class Gateway {
 		return {};
 	}
 
-	private async create(cwd: string | undefined) {
+	private async create(command: Extract<Command, { type: "create_conversation" }>) {
+		const model = await this.modelFor(command.modelId);
 		const conversation = await this.options.harness.createConversation(
 			{
 				ownership: { kind: "ownerless" },
-				agent: { model: this.defaultModel, cwd: cwd ?? this.options.cwd },
+				agent: { model, cwd: command.cwd ?? this.options.cwd },
 			},
 			context,
 		);
+		const name = command.name?.trim();
+		if (name) await writeMeta(conversation, { name });
 		return { conversationId: conversation.id };
+	}
+
+	private async modelFor(modelId: string | undefined): Promise<ModelRef> {
+		if (modelId === undefined) return this.defaultModel;
+		await this.options.ensureModel(modelId);
+		return { provider: this.defaultModel.provider, modelId };
+	}
+
+	private async setMeta(command: Extract<Command, { type: "set_meta" }>) {
+		if (command.state !== undefined && !STATES.includes(command.state)) {
+			throw new Error(`unknown state ${command.state}`);
+		}
+		const conversation = await this.conversation(command.conversationId);
+		const name = typeof command.name === "string" ? command.name.trim() || null : command.name;
+		await writeMeta(conversation, { name, state: command.state });
+		return {};
 	}
 
 	private async detach(conversationId: number) {
@@ -132,8 +154,8 @@ export class Gateway {
 	private async list() {
 		const page = await this.options.storage.scanConversations({}, LIST_LIMIT, undefined, context);
 		const owned = page.items.filter((record) => record.owner === undefined);
-		const conversations = await Promise.all(owned.map((record) => this.summarize(record.id)));
-		return { conversations };
+		const summaries = await Promise.all(owned.map((record) => this.summarize(record.id)));
+		return { conversations: summaries.filter((summary) => summary.state !== "deleted") };
 	}
 
 	private async submit(command: Extract<Command, { type: "submit" }>) {
@@ -153,10 +175,13 @@ export class Gateway {
 	private async summarize(id: ConversationId): Promise<ConversationSummary> {
 		const conversation = await this.conversation(id);
 		const agent = await conversation.agent(context);
+		const meta = await readMeta(this.options.harness, id);
 		return {
 			id,
 			cwd: agent.cwd ?? null,
 			model: agent.model ? `${agent.model.provider}/${agent.model.modelId}` : null,
+			name: meta.name,
+			state: meta.state,
 		};
 	}
 
