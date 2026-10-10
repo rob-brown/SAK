@@ -148,6 +148,8 @@ export class Gateway {
 	private async fork(conversationId: number, at: number) {
 		const conversation = await this.conversation(conversationId);
 		const forked = await conversation.fork(at as EntryId, { ownership: { kind: "ownerless" } }, context);
+		const { name } = await readMeta(this.options.harness, conversationId);
+		if (name) await writeMeta(forked, { name: `${name} (fork)` });
 		return { conversationId: forked.id };
 	}
 

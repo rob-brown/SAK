@@ -8,6 +8,7 @@ defmodule Sak.Chat do
   """
 
   defstruct entries: [],
+            records: [],
             live: nil,
             running?: false,
             running_tools: %{},
@@ -25,6 +26,7 @@ defmodule Sak.Chat do
 
     %__MODULE__{
       entries: entries,
+      records: Map.get(snapshot, "entries", []),
       live: live_item(Map.get(snapshot, "generation"), length(entries)),
       running?: Map.get(snapshot, "run") != nil,
       usage: Map.get(snapshot, "usage", %{}),
@@ -77,7 +79,8 @@ defmodule Sak.Chat do
     replaces_live? = Enum.any?(items, &(&1.role == :assistant))
     {live, deleted} = settle_live(chat.live, replaces_live?)
     inserted = Enum.map(items, &{:insert, &1})
-    {%{chat | live: live, entries: chat.entries ++ items}, deleted ++ inserted}
+    records = chat.records ++ [entry]
+    {%{chat | live: live, entries: chat.entries ++ items, records: records}, deleted ++ inserted}
   end
 
   defp apply_event(chat, %{"type" => "tool_execution_start"} = event) do

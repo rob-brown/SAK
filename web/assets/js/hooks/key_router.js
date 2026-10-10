@@ -53,6 +53,10 @@ function onlyShift(mods) {
   return mods.every((mod) => mod === "shift")
 }
 
+export function chatScrolls(dataset) {
+  return (dataset.focusedPane || "chat_history") === "chat_history" && dataset.chatTab !== "entries"
+}
+
 function focusedPane(root) {
   return root.dataset.focusedPane || "chat_history"
 }
@@ -95,10 +99,11 @@ const KeyRouter = {
       }
 
       const pane = focusedPane(this.el)
+      const scrollsChat = chatScrolls(this.el.dataset)
 
       if (key in SCROLL_LINE && mods.length === 0) {
         event.preventDefault()
-        if (pane === "chat_history") {
+        if (scrollsChat) {
           scrollChat(SCROLL_LINE[key] * LINE_PX)
         } else {
           this.pushEvent("key", {key, modifiers: mods})
@@ -109,21 +114,23 @@ const KeyRouter = {
       const combo = mods.length === 1 ? `${mods[0]}-${key}` : key
       if (combo in SCROLL_HALF_PAGE) {
         event.preventDefault()
-        if (pane === "chat_history") {
+        if (scrollsChat) {
           const el = document.getElementById("chat-history")
           const page = el ? el.clientHeight / 2 : 300
           scrollChat(SCROLL_HALF_PAGE[combo] * page)
+        } else if (pane === "chat_history") {
+          this.pushEvent("key", {key: combo, modifiers: []})
         }
         return
       }
 
-      if (key in SCROLL_EDGE && onlyShift(mods) && pane === "chat_history") {
+      if (key in SCROLL_EDGE && onlyShift(mods) && scrollsChat) {
         event.preventDefault()
         scrollChatToEdge(SCROLL_EDGE[key])
         return
       }
 
-      if (key === "enter" && mods.length === 0 && pane === "chat_history") {
+      if (key === "enter" && mods.length === 0 && scrollsChat) {
         event.preventDefault()
         focusPromptTextarea()
         return

@@ -2,8 +2,28 @@ defmodule Sak.Keybindings do
   @type entry :: {key :: String.t(), description :: String.t()}
 
   @spec local(atom(), atom() | nil) :: [entry()]
-  def local(:chat_history, _sidebar_tab) do
+  def local(:chat_history, :entries) do
     [
+      {"[", "Switch to the previous tab"},
+      {"]", "Switch to the next tab"},
+      {"j", "Move the selection down"},
+      {"down", "Move the selection down"},
+      {"k", "Move the selection up"},
+      {"up", "Move the selection up"},
+      {"ctrl-d", "Move the selection ten entries down"},
+      {"ctrl-u", "Move the selection ten entries up"},
+      {"g", "Select the first entry"},
+      {"G", "Select the last entry"},
+      {"enter", "Show or hide the full contents of the selected entry"},
+      {"f",
+       "Fork a new session from the selected entry (it keeps the history up to and including it)"}
+    ]
+  end
+
+  def local(:chat_history, _tab) do
+    [
+      {"[", "Switch to the previous tab"},
+      {"]", "Switch to the next tab"},
       {"j", "Scroll one line down"},
       {"down", "Scroll one line down"},
       {"k", "Scroll one line up"},

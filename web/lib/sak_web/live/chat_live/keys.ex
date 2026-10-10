@@ -7,6 +7,7 @@ defmodule SakWeb.ChatLive.Keys do
   import Phoenix.LiveView, only: [push_patch: 2]
 
   alias SakWeb.ChatLive.Command
+  alias SakWeb.ChatLive.Entries
   alias SakWeb.ChatLive.Items
   alias SakWeb.ChatLive.Manage
   alias SakWeb.ChatLive.Models
@@ -15,6 +16,8 @@ defmodule SakWeb.ChatLive.Keys do
   alias SakWeb.ChatLive.Sessions
 
   def handle(key, socket) do
+    socket = assign(socket, last_notice: "")
+
     case modal(socket.assigns) do
       nil -> global(key, socket)
       modal -> modal_key(modal, key, socket)
@@ -123,6 +126,10 @@ defmodule SakWeb.ChatLive.Keys do
 
   defp global(_key, socket), do: socket
 
+  defp chat_key(key, %{assigns: %{chat_tab: :entries}} = socket) do
+    entries_key(key, socket)
+  end
+
   defp chat_key("/", socket) do
     Search.open(socket)
   end
@@ -136,6 +143,40 @@ defmodule SakWeb.ChatLive.Keys do
   end
 
   defp chat_key(_key, socket), do: socket
+
+  defp entries_key(code, socket) when code in ["j", "down"] do
+    Entries.move(socket, 1)
+  end
+
+  defp entries_key(code, socket) when code in ["k", "up"] do
+    Entries.move(socket, -1)
+  end
+
+  defp entries_key("g", socket) do
+    Entries.select_first(socket)
+  end
+
+  defp entries_key("G", socket) do
+    Entries.select_last(socket)
+  end
+
+  defp entries_key("ctrl-d", socket) do
+    Entries.page(socket, 1)
+  end
+
+  defp entries_key("ctrl-u", socket) do
+    Entries.page(socket, -1)
+  end
+
+  defp entries_key("enter", socket) do
+    Entries.toggle_detail(socket)
+  end
+
+  defp entries_key("f", socket) do
+    Entries.fork(socket)
+  end
+
+  defp entries_key(_key, socket), do: socket
 
   defp sessions_key("n", socket) do
     NewSession.open(socket)
@@ -194,6 +235,10 @@ defmodule SakWeb.ChatLive.Keys do
       :sessions -> :logs
       :logs -> :sessions
     end)
+  end
+
+  defp toggle_sidebar_tab(%{assigns: %{focused_pane: :chat_history}} = socket) do
+    Entries.switch_tab(socket)
   end
 
   defp toggle_sidebar_tab(socket), do: socket

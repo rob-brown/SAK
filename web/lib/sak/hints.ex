@@ -21,6 +21,10 @@ defmodule Sak.Hints do
     Enum.map_join(hints, " | ", fn {label, key} -> "#{label}: #{key}" end)
   end
 
+  defp pane(%{focused_pane: :chat_history, chat_tab: :entries}) do
+    [{"Details", "<enter>"}, {"Fork", "f"}, {"Chat", "["}]
+  end
+
   defp pane(%{focused_pane: :chat_history}) do
     [
       {"Message", "<enter>"},
@@ -57,6 +61,11 @@ defmodule Sak.Hints do
     [{"Filter", "/"}]
   end
 
-  defp archive_hint(%{"state" => "archived"}), do: {"Restore", "R"}
-  defp archive_hint(_session), do: {"Archive", "a"}
+  defp archive_hint(%{"state" => "archived"}) do
+    {"Restore", "R"}
+  end
+
+  defp archive_hint(_session) do
+    {"Archive", "a"}
+  end
 end

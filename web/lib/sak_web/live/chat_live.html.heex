@@ -3,6 +3,7 @@
     id="sak"
     phx-hook="KeyRouter"
     data-focused-pane={@focused_pane}
+    data-chat-tab={@chat_tab}
     data-help-open={to_string(@help_open?)}
     data-models-open={to_string(@models != nil)}
     data-wizard-open={to_string(@new_session != nil)}
@@ -137,14 +138,37 @@
         <% {current_match, match_count} = Search.summary(assigns) %>
 
         <div class="px-2 py-1 border-b border-neutral-800 text-neutral-400 shrink-0 flex justify-between items-center gap-2">
-          <span>0 Chat History</span>
+          <div class="flex -my-1 -ml-2 shrink-0">
+            <button
+              id="tab-chat"
+              phx-click="switch_chat_tab"
+              phx-value-tab="chat"
+              class={["px-2 py-1", @chat_tab == :chat && "text-neutral-100 bg-neutral-900"]}
+            >
+              0 Chat History
+            </button>
+            <button
+              id="tab-entries"
+              phx-click="switch_chat_tab"
+              phx-value-tab="entries"
+              class={["px-2 py-1", @chat_tab == :entries && "text-neutral-100 bg-neutral-900"]}
+            >
+              Entries
+            </button>
+          </div>
           <span :if={@zoomed_pane == :chat_history} class="text-xs text-yellow-600 shrink-0">
             zoomed — z to restore
           </span>
-          <span :if={@chat_search_term != ""} class="text-xs text-neutral-500 truncate">
+          <span
+            :if={@chat_tab == :chat and @chat_search_term != ""}
+            class="text-xs text-neutral-500 truncate"
+          >
             /{@chat_search_term} ({Search.count_label(@chat_search_match_index, match_count)})
           </span>
-          <span class="text-xs text-neutral-600 shrink-0">
+          <span :if={@chat_tab == :entries} id="entries-count" class="text-xs text-neutral-500">
+            {length(@entry_rows)} entries
+          </span>
+          <span :if={@chat_tab == :chat} class="text-xs text-neutral-600 shrink-0">
             t {if @thinking_visible?, do: "on", else: "off"} · o {if @tool_output_visible?,
               do: "on",
               else: "off"}
@@ -178,7 +202,39 @@
           </button>
         </form>
 
-        <div id="chat-history" phx-hook="ChatScroll" class="flex-1 overflow-y-auto p-4">
+        <div
+          :if={@chat_tab == :entries}
+          id="entries-pane"
+          phx-hook="ScrollSelected"
+          class="flex-1 overflow-y-auto"
+        >
+          <p :if={@entry_rows == []} id="entries-empty" class="p-4 text-neutral-600">
+            no entries yet
+          </p>
+          <div :for={{row, index} <- Enum.with_index(@entry_rows)} id={"history-row-#{row.id}"}>
+            <div
+              data-selected={to_string(index == @entries_selected)}
+              phx-click="entries_select"
+              phx-value-index={index}
+              class={entry_row_classes(index == @entries_selected)}
+            >
+              <span class="w-10 shrink-0 text-right text-neutral-500">{row.number}</span>
+              <span class="w-14 shrink-0 text-xs text-neutral-600">id {row.id}</span>
+              <span class={["w-20 shrink-0", entry_label_class(row.label)]}>{row.label}</span>
+              <span class="min-w-0 flex-1 truncate">{row.text}</span>
+            </div>
+            <pre
+              :if={MapSet.member?(@entries_open, row.id)}
+              class="mx-2 mb-2 max-h-80 overflow-auto whitespace-pre-wrap break-all rounded bg-neutral-900 p-2 text-xs text-neutral-300"
+            >{EntryRows.detail(row.record)}</pre>
+          </div>
+        </div>
+
+        <div
+          id="chat-history"
+          phx-hook="ChatScroll"
+          class={["flex-1 overflow-y-auto p-4", @chat_tab == :entries && "hidden"]}
+        >
           <p :if={@current_id == nil} id="no-session" class="text-neutral-600">
             no active session — enter to select, n to start one
           </p>
@@ -277,7 +333,7 @@
     />
     <.help
       :if={@help_open?}
-      rows={help_rows(@focused_pane, @sidebar_tab, @help_search)}
+      rows={help_rows(@focused_pane, help_tab(assigns), @help_search)}
       search={@help_search}
     />
   </div>

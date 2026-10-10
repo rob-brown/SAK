@@ -4,8 +4,10 @@ defmodule SakWeb.ChatLive do
   alias Phoenix.PubSub
   alias Sak.Chat
   alias Sak.ConnectionLog
+  alias Sak.EntryRows
   alias Sak.Gateway
   alias Sak.Hints
+  alias SakWeb.ChatLive.Entries
   alias SakWeb.ChatLive.Events
   alias SakWeb.ChatLive.Items
   alias SakWeb.ChatLive.Keys
@@ -45,12 +47,12 @@ defmodule SakWeb.ChatLive do
   @impl true
   def handle_info({:gateway_snapshot, id, snapshot}, %{assigns: %{current_id: id}} = socket) do
     chat = Chat.from_snapshot(snapshot)
-    {:noreply, socket |> assign(chat: chat) |> Items.refresh()}
+    {:noreply, socket |> assign(chat: chat) |> Items.refresh() |> Entries.refresh()}
   end
 
   def handle_info({:gateway_events, id, events}, %{assigns: %{current_id: id}} = socket) do
     {chat, ops} = Chat.apply_events(socket.assigns.chat, events)
-    {:noreply, socket |> assign(chat: chat) |> apply_ops(ops)}
+    {:noreply, socket |> assign(chat: chat) |> apply_ops(ops) |> Entries.refresh()}
   end
 
   def handle_info(:gateway_started, socket) do
@@ -96,6 +98,15 @@ defmodule SakWeb.ChatLive do
     {:noreply, push_patch(socket, to: ~p"/c/#{id}")}
   end
 
+  def handle_event("switch_chat_tab", %{"tab" => tab}, socket) do
+    {:noreply, socket |> Entries.show(tab) |> Keys.focus_pane(:chat_history)}
+  end
+
+  def handle_event("entries_select", %{"index" => index}, socket) do
+    {:noreply,
+     socket |> Entries.select_index(String.to_integer(index)) |> Entries.toggle_detail()}
+  end
+
   def handle_event("focus_chat_history", _params, socket) do
     {:noreply, Keys.focus_pane(socket, :chat_history)}
   end
@@ -127,6 +138,10 @@ defmodule SakWeb.ChatLive do
       sessions_selected: 0,
       sessions_filter: "",
       sessions_filter_open?: false,
+      chat_tab: :chat,
+      entry_rows: [],
+      entries_selected: 0,
+      entries_open: MapSet.new(),
       show_archived?: false,
       sidebar_tab: :sessions,
       focused_pane: :sessions_and_logs,
@@ -174,16 +189,16 @@ defmodule SakWeb.ChatLive do
       current_id: id,
       chat: %Chat{},
       last_error: nil,
-      last_notice: "",
       focused_pane: :chat_history,
       zoomed_pane: nil
     )
+    |> Entries.reset()
     |> Items.refresh()
     |> attach()
   end
 
   defp deselect(socket) do
-    socket |> assign(current_id: nil, chat: %Chat{}) |> Items.refresh()
+    socket |> assign(current_id: nil, chat: %Chat{}) |> Entries.reset() |> Items.refresh()
   end
 
   defp attach(%{assigns: %{current_id: nil}} = socket), do: socket

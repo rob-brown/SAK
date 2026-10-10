@@ -16,6 +16,19 @@ defmodule SakWeb.ChatLive.Render do
   def sidebar_classes(:chat_history), do: "hidden"
   def sidebar_classes(_zoomed_pane), do: "flex-1 min-w-0 flex flex-col gap-2 min-h-0"
 
+  def entry_row_classes(selected?) do
+    [
+      "px-2 py-0.5 flex gap-2 items-baseline cursor-pointer hover:bg-neutral-900",
+      selected? && "bg-neutral-800 ring-1 ring-inset ring-neutral-500"
+    ]
+  end
+
+  def entry_label_class("user"), do: "text-white"
+  def entry_label_class("assistant"), do: "text-green-400"
+  def entry_label_class("tool"), do: "text-fuchsia-400"
+  def entry_label_class("system"), do: "text-yellow-600"
+  def entry_label_class(_label), do: "text-neutral-400"
+
   def header_classes(index, selected_index) do
     [
       "px-2 pt-2 pb-1 flex gap-2 items-baseline text-blue-400 font-semibold cursor-pointer",
@@ -72,6 +85,9 @@ defmodule SakWeb.ChatLive.Render do
 
   defp glyph_class(true), do: "text-cyan-400 font-bold"
   defp glyph_class(false), do: "text-transparent"
+
+  def help_tab(%{focused_pane: :chat_history, chat_tab: tab}), do: tab
+  def help_tab(%{sidebar_tab: tab}), do: tab
 
   def help_rows(focused_pane, sidebar_tab, raw_query) do
     Help.rows(focused_pane, sidebar_tab, Help.parse_query(raw_query))

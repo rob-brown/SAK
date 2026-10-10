@@ -127,6 +127,38 @@ test("attaching twice sends a fresh snapshot each time", async () => {
 	await close();
 });
 
+test("fork keeps the entries up to and including the chosen one and carries the name", async () => {
+	// Arrange
+	const { close, faux, gateway, outgoing } = await setup();
+	faux.setResponses([fauxAssistantMessage("first answer"), fauxAssistantMessage("second answer")]);
+	await gateway.handle({ id: "1", type: "create_conversation", name: "Parent" });
+	const { conversationId } = (reply(outgoing, "1") as { result: { conversationId: number } }).result;
+	await gateway.handle({ id: "2", type: "attach", conversationId });
+	await gateway.handle({ id: "3", type: "submit", conversationId, content: "one" });
+	await waitFor(() => outgoing.filter((m) => m.type === "events" && JSON.stringify(m).includes("run_end")).length >= 1);
+	await gateway.handle({ id: "4", type: "submit", conversationId, content: "two" });
+	await waitFor(() => outgoing.filter((m) => m.type === "events" && JSON.stringify(m).includes("run_end")).length >= 2);
+	await gateway.handle({ id: "5", type: "attach", conversationId });
+	const parent = outgoing.filter((m) => m.type === "snapshot").pop() as { snapshot: { entries: { id: number }[] } };
+	const firstAnswer = parent.snapshot.entries.find((e) => JSON.stringify(e).includes("first answer")) as { id: number };
+
+	// Act
+	await gateway.handle({ id: "6", type: "fork", conversationId, at: firstAnswer.id });
+	const forkId = (reply(outgoing, "6") as { result: { conversationId: number } }).result.conversationId;
+	await gateway.handle({ id: "7", type: "attach", conversationId: forkId });
+	await gateway.handle({ id: "8", type: "list_conversations" });
+
+	// Assert
+	const forked = outgoing.filter((m) => m.type === "snapshot").pop() as { snapshot: { entries: unknown[] } };
+	const text = JSON.stringify(forked.snapshot.entries);
+	assert.ok(text.includes("first answer"));
+	assert.ok(!text.includes('"content":"two"'));
+	assert.ok(!text.includes("second answer"));
+	const listed = reply(outgoing, "8") as Listed;
+	assert.equal(listed.result.conversations.find((c) => c.id === forkId)?.name, "Parent (fork)");
+	await close();
+});
+
 test("set_model switches one conversation and leaves the others alone", async () => {
 	// Arrange
 	const { close, ensured, gateway, outgoing } = await setup();
