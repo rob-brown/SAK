@@ -222,6 +222,25 @@ defmodule Sak.ChatTest do
       assert result.live.blocks == []
     end
 
+    test "total_tokens sums usage across models" do
+      # Arrange
+      chat = Chat.from_snapshot(%{"entries" => []})
+
+      usage = %{
+        "models" => %{
+          "a/x" => %{"totalTokens" => 100},
+          "b/y" => %{"totalTokens" => 23}
+        }
+      }
+
+      # Act
+      {updated, _ops} = Chat.apply_events(chat, [%{"type" => "usage_changed", "usage" => usage}])
+
+      # Assert
+      assert Chat.total_tokens(updated) == 123
+      assert Chat.total_tokens(chat) == 0
+    end
+
     test "tool results carry the error flag" do
       # Arrange
       chat = Chat.from_snapshot(%{"entries" => []})

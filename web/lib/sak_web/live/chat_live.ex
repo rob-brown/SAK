@@ -76,7 +76,7 @@ defmodule SakWeb.ChatLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
-      <div id="sak" class="flex h-dvh bg-neutral-950 text-neutral-200">
+      <div id="sak" phx-hook="KeyRouter" class="flex h-dvh bg-neutral-950 text-neutral-200">
         <aside id="sidebar" class="flex w-72 shrink-0 flex-col border-r border-neutral-800">
           <.form
             for={%{}}
@@ -292,7 +292,7 @@ defmodule SakWeb.ChatLive do
   end
 
   defp status_line(%{chat: chat}) do
-    model = get_in(chat.agent, ["model", "modelId"])
-    model || "idle"
+    model = get_in(chat.agent, ["model", "modelId"]) || "idle"
+    "#{model} · #{Chat.total_tokens(chat)} tokens"
   end
 end

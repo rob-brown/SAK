@@ -9,7 +9,7 @@ defmodule SakWeb.ChatComponents do
   def message(assigns) do
     ~H"""
     <article id={@id} class={message_classes(@item.role)}>
-      <.block :for={block <- @item.blocks} block={block} />
+      <.block :for={block <- @item.blocks} block={block} markdown?={@item.role == :assistant} />
       <p :if={Map.get(@item, :error)} class="mt-2 text-sm text-red-400">
         {Map.get(@item, :error)}
       </p>
@@ -18,6 +18,13 @@ defmodule SakWeb.ChatComponents do
   end
 
   attr :block, :map, required: true
+  attr :markdown?, :boolean, default: false
+
+  def block(%{block: %{type: :text}, markdown?: true} = assigns) do
+    ~H"""
+    <div class="chat-markdown break-words">{Sak.Markdown.to_html(@block.text)}</div>
+    """
+  end
 
   def block(%{block: %{type: :text}} = assigns) do
     ~H"""

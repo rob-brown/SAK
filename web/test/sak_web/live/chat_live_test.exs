@@ -110,6 +110,48 @@ defmodule SakWeb.ChatLiveTest do
     refute settled =~ "partial"
   end
 
+  test "assistant text is rendered as markdown and user text is not", %{conn: conn} do
+    # Arrange
+    {:ok, view, _html} = live(conn, ~p"/c/1")
+
+    snapshot = %{
+      "entries" => [
+        user_entry(7, "**not bold**"),
+        %{
+          "id" => 8,
+          "model" => [
+            %{
+              "role" => "assistant",
+              "content" => [%{"type" => "text", "text" => "**bold** <b>raw</b>"}]
+            }
+          ]
+        }
+      ]
+    }
+
+    # Act
+    broadcast(1, {:gateway_snapshot, 1, snapshot})
+    _ = render(view)
+
+    # Assert
+    assert has_element?(view, "#entry-8-0 strong", "bold")
+    refute has_element?(view, "#entry-8-0 b")
+    refute has_element?(view, "#entry-7-0 strong")
+  end
+
+  test "usage shows in the status line", %{conn: conn} do
+    # Arrange
+    {:ok, view, _html} = live(conn, ~p"/c/1")
+    usage = %{"models" => %{"m" => %{"totalTokens" => 321}}}
+
+    # Act
+    broadcast(1, {:gateway_events, 1, [%{"type" => "usage_changed", "usage" => usage}]})
+    _ = render(view)
+
+    # Assert
+    assert has_element?(view, "#status-line", "321 tokens")
+  end
+
   test "events for another conversation are ignored", %{conn: conn} do
     # Arrange
     {:ok, view, _html} = live(conn, ~p"/c/1")

@@ -29,6 +29,14 @@ defmodule Sak.Chat do
     }
   end
 
+  def total_tokens(%__MODULE__{usage: usage}) do
+    usage
+    |> Map.get("models", %{})
+    |> Map.values()
+    |> Enum.map(&Map.get(&1, "totalTokens", 0))
+    |> Enum.sum()
+  end
+
   def items(%__MODULE__{} = chat) do
     chat.entries ++ List.wrap(chat.live)
   end
