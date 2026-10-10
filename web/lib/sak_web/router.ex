@@ -17,7 +17,8 @@ defmodule SakWeb.Router do
   scope "/", SakWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/", ChatLive
+    live "/c/:id", ChatLive
   end
 
   # Other scopes may use custom stacks.
