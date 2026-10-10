@@ -42,7 +42,7 @@ defmodule SakWeb.ChatLiveIntegrationTest do
 
     # Act
     view
-    |> form("#prompt-form", %{"content" => "Write the word ok into ok.txt, then reply done."})
+    |> form("#prompt-form-0", %{"content" => "Write the word ok into ok.txt, then reply done."})
     |> render_submit()
 
     await_run_end()
