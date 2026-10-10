@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Sak is a keyboard-driven chat UI for a durable coding agent. It is two processes in one repo:
+SAK is a keyboard-driven chat UI for a durable coding agent. It is two processes in one repo:
 
 - `gateway/` — Node (>=22.19, runs `.ts` directly, no build step) wrapper around the `@earendil-works/pi-*` / `chord` agent harness. Persists conversations in SQLite.
 - `web/` — Phoenix 1.8 / LiveView app. It spawns the gateway as a child process and renders its conversations.
