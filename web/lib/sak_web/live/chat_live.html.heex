@@ -110,7 +110,7 @@
                     <div class="min-w-0 flex-1">
                       <div class="truncate">{session_label(session)}</div>
                       <div class="truncate text-xs text-neutral-500">
-                        {model_label(session)}<span
+                        {session_detail(session)}<span
                           :if={session["state"] == "archived"}
                           class="ml-2 text-yellow-600"
                         >archived</span>

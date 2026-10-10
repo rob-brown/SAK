@@ -89,7 +89,10 @@ defmodule SakWeb.WizardOverlay do
         phx-value-index={index}
         class={row_classes(index == @wizard.selected)}
       >
-        <span class="truncate">{candidate.label}</span>
+        <span class="shrink-0">{candidate.label}</span>
+        <span :if={Map.get(candidate, :detail, "") != ""} class="truncate text-xs text-neutral-500">
+          {candidate.detail}
+        </span>
         <span :if={badge(candidate)} class="ml-auto shrink-0 text-xs text-neutral-500">
           {badge(candidate)}
         </span>
@@ -107,10 +110,12 @@ defmodule SakWeb.WizardOverlay do
   end
 
   defp title(:directory), do: "Directory"
+  defp title(:persona), do: "Persona"
   defp title(:model), do: "Model"
   defp title(:name), do: "Name (optional)"
 
   defp footer(:directory), do: "↑↓ move · enter accept · esc cancel"
+  defp footer(:persona), do: "↑↓ move · enter accept · esc back"
   defp footer(:model), do: "↑↓ move · enter accept · esc back"
   defp footer(:name), do: "enter start · esc back"
 
@@ -118,6 +123,7 @@ defmodule SakWeb.WizardOverlay do
     "Search directories — ~ for home, ../ to go up, or type a full path"
   end
 
+  defp placeholder(:persona), do: "Search personas"
   defp placeholder(:model), do: "Search models"
   defp placeholder(:name), do: "Name this session, or press enter to leave it unnamed"
 

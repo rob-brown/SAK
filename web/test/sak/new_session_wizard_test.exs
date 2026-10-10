@@ -29,7 +29,61 @@ defmodule Sak.NewSessionWizardTest do
     assert on_model.step == :model
     assert [%{value: "beta-model", kind: :default} | _] = NewSessionWizard.candidates(on_model)
     assert on_name.step == :name
-    assert result == {:done, %{cwd: "/home/me/default", model_id: "beta-model", name: ""}}
+
+    assert result ==
+             {:done, %{cwd: "/home/me/default", persona: nil, model_id: "beta-model", name: ""}}
+  end
+
+  @personas [
+    %{"name" => "default", "description" => "General coding assistant", "model" => nil},
+    %{"name" => "builder", "description" => "Implements a plan", "model" => "beta-model"},
+    %{"name" => "critic", "description" => "Reviews code", "model" => "not-offered"}
+  ]
+
+  test "the persona step comes after the directory with the default first and descriptions attached" do
+    # Arrange
+    wizard = wizard([], personas: @personas, models: @models, default_model: "alpha-model")
+
+    # Act
+    on_persona = walk(wizard)
+
+    # Assert
+    assert NewSessionWizard.step_count(wizard) == 4
+    assert on_persona.step == :persona
+
+    assert [
+             %{value: "default", kind: :default, detail: "General coding assistant"},
+             %{value: "builder", kind: :persona},
+             %{value: "critic"}
+           ] = NewSessionWizard.candidates(on_persona)
+  end
+
+  test "a persona with a model offered by the endpoint makes it the model default" do
+    # Arrange
+    on_persona =
+      [] |> wizard(personas: @personas, models: @models, default_model: "alpha-model") |> walk()
+
+    builder = on_persona |> NewSessionWizard.set_query("build")
+
+    # Act
+    on_model = walk(builder)
+    result = on_model |> walk() |> NewSessionWizard.accept()
+
+    # Assert
+    assert [%{value: "beta-model", kind: :default} | _] = NewSessionWizard.candidates(on_model)
+    assert {:done, %{persona: "builder", model_id: "beta-model"}} = result
+  end
+
+  test "a persona whose model the endpoint does not offer falls back to the gateway default" do
+    # Arrange
+    on_persona =
+      [] |> wizard(personas: @personas, models: @models, default_model: "alpha-model") |> walk()
+
+    # Act
+    on_model = on_persona |> NewSessionWizard.set_query("crit") |> walk()
+
+    # Assert
+    assert [%{value: "alpha-model", kind: :default} | _] = NewSessionWizard.candidates(on_model)
   end
 
   test "the name typed on the last step is trimmed and returned" do

@@ -104,6 +104,35 @@ defmodule SakWeb.KeyboardTest do
     refute has_element?(view, "#wizard-overlay")
   end
 
+  test "the wizard offers the personas and creates the session with the chosen one", %{conn: conn} do
+    # Arrange
+    Application.put_env(:sak, :fake_gateway_replies, %{
+      "list_conversations" => {:ok, %{"conversations" => @conversations}},
+      "create_conversation" => {:ok, %{"conversationId" => 3}},
+      "list_personas" =>
+        {:ok,
+         %{
+           "personas" => [
+             %{"name" => "default", "description" => "General", "model" => nil},
+             %{"name" => "builder", "description" => "Implements a plan", "model" => nil}
+           ]
+         }}
+    })
+
+    {:ok, view, _html} = live(conn, ~p"/")
+    press(view, "n")
+    view |> form("#wizard-form") |> render_submit()
+
+    # Act
+    listed = has_element?(view, "#wizard-candidates li", "Implements a plan")
+    view |> element("#wizard-candidate-1") |> render_click()
+    view |> form("#wizard-form") |> render_submit()
+
+    # Assert
+    assert listed
+    assert_received {:gateway_request, "create_conversation", %{"persona" => "builder"}}
+  end
+
   test "escape closes the wizard without creating anything", %{conn: conn} do
     # Arrange
     {:ok, view, _html} = live(conn, ~p"/")

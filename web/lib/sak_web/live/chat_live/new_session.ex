@@ -17,7 +17,7 @@ defmodule SakWeb.ChatLive.NewSession do
         cursor_cwd: Sessions.cursor_cwd(assigns),
         active_cwd: Sessions.cwd_of(assigns.conversations, assigns.current_id),
         home: assigns.home
-      ] ++ model_hints()
+      ] ++ model_hints() ++ persona_hints()
 
     projects =
       assigns.conversations |> Enum.map(& &1["cwd"]) |> Enum.reject(&is_nil/1) |> Enum.uniq()
@@ -88,9 +88,17 @@ defmodule SakWeb.ChatLive.NewSession do
     end
   end
 
+  defp persona_hints do
+    case client().request("list_personas", %{}) do
+      {:ok, %{"personas" => personas}} -> [personas: personas]
+      _unavailable -> []
+    end
+  end
+
   defp submit(socket, answers) do
     params =
       %{"cwd" => answers.cwd}
+      |> put_present("persona", answers.persona)
       |> put_present("modelId", answers.model_id)
       |> put_present("name", answers.name)
 

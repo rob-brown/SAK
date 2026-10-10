@@ -59,6 +59,11 @@ defmodule SakWeb.ChatLive.Render do
 
   def model_label(_session), do: ""
 
+  def session_detail(session) do
+    persona = session["persona"]
+    Enum.join(Enum.reject([model_label(session), persona], &(&1 in [nil, ""])), " · ")
+  end
+
   def disclosure(%{collapsed?: true}), do: "▸"
   def disclosure(%{collapsed?: false}), do: "▾"
 

@@ -20,7 +20,8 @@ defmodule Sak.NewSessionWizard do
     :home,
     :index_root,
     step: :directory,
-    steps: [:directory, :model, :name],
+    steps: [:directory, :persona, :model, :name],
+    personas: [],
     answers: %{},
     query: "",
     selected: 0,
@@ -32,18 +33,25 @@ defmodule Sak.NewSessionWizard do
     hidden: 0
   ]
 
-  @type step :: :directory | :model | :name
+  @type step :: :directory | :persona | :model | :name
   @type candidate :: %{
-          value: String.t(),
-          label: String.t(),
-          kind: :default | :project | :directory | :typed | :model
+          required(:value) => String.t(),
+          required(:label) => String.t(),
+          required(:kind) => :default | :project | :directory | :typed | :model | :persona,
+          optional(:detail) => String.t()
         }
-  @type answers :: %{cwd: String.t(), model_id: String.t() | nil, name: String.t()}
+  @type answers :: %{
+          cwd: String.t(),
+          persona: String.t() | nil,
+          model_id: String.t() | nil,
+          name: String.t()
+        }
   @type t :: %__MODULE__{}
 
   @spec new(String.t(), [String.t()], keyword()) :: t()
   def new(default_cwd, project_paths, hints \\ []) do
     models = Keyword.get(hints, :models, [])
+    personas = Keyword.get(hints, :personas, [])
 
     refresh(%__MODULE__{
       default_cwd: default_cwd,
@@ -53,7 +61,8 @@ defmodule Sak.NewSessionWizard do
       home: Keyword.get_lazy(hints, :home, fn -> System.user_home() || default_cwd end),
       projects: project_paths,
       models: models,
-      steps: steps(models)
+      personas: personas,
+      steps: steps(personas, models)
     })
   end
 
@@ -100,6 +109,7 @@ defmodule Sak.NewSessionWizard do
      %{
        cwd: answers.directory,
        model_id: Map.get(answers, :model),
+       persona: Map.get(answers, :persona),
        name: String.trim(wizard.query)
      }}
   end
@@ -151,13 +161,12 @@ defmodule Sak.NewSessionWizard do
     end
   end
 
-  defp steps([]) do
-    [:directory, :name]
+  defp steps(personas, models) do
+    [:directory] ++ present(personas, :persona) ++ present(models, :model) ++ [:name]
   end
 
-  defp steps(_models) do
-    [:directory, :model, :name]
-  end
+  defp present([], _step), do: []
+  defp present(_items, step), do: [step]
 
   defp advance(wizard, value) do
     position = index_of(wizard) + 1
@@ -196,20 +205,52 @@ defmodule Sak.NewSessionWizard do
     directory_candidates(wizard)
   end
 
+  defp candidates_for(%{step: :persona} = wizard) do
+    persona_candidates(wizard)
+  end
+
   defp candidates_for(%{step: :model} = wizard) do
     model_candidates(wizard)
   end
 
   defp candidates_for(%{step: :name}), do: []
 
+  defp persona_candidates(wizard) do
+    by_name = Map.new(wizard.personas, &{&1["name"], &1})
+
+    wizard.personas
+    |> Enum.map(& &1["name"])
+    |> FuzzyMatch.filter(wizard.query)
+    |> Enum.map(fn name ->
+      %{
+        value: name,
+        label: name,
+        detail: by_name[name]["description"] || "",
+        kind: if(name == "default", do: :default, else: :persona)
+      }
+    end)
+  end
+
   defp model_candidates(wizard) do
-    ordered = Enum.sort_by(wizard.models, &(&1 != wizard.default_model))
+    default = model_default(wizard)
+    ordered = Enum.sort_by(wizard.models, &(&1 != default))
 
     ordered
     |> FuzzyMatch.filter(wizard.query)
     |> Enum.map(fn id ->
-      %{value: id, label: id, kind: if(id == wizard.default_model, do: :default, else: :model)}
+      %{value: id, label: id, kind: if(id == default, do: :default, else: :model)}
     end)
+  end
+
+  defp model_default(wizard) do
+    persona = Enum.find(wizard.personas, &(&1["name"] == wizard.answers[:persona]))
+    preferred = persona && persona["model"]
+
+    if preferred in wizard.models do
+      preferred
+    else
+      wizard.default_model
+    end
   end
 
   defp search_root(wizard) do

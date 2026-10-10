@@ -9,6 +9,7 @@ defmodule SakWeb.SessionsManagementTest do
       "cwd" => "/work/alpha",
       "model" => "openai-compatible/qwen/qwen3.8",
       "name" => "Fix login",
+      "persona" => "builder",
       "state" => "active"
     },
     %{
@@ -65,7 +66,7 @@ defmodule SakWeb.SessionsManagementTest do
 
     # Assert
     assert named =~ "Fix login"
-    assert named =~ "qwen/qwen3.8"
+    assert named =~ "qwen/qwen3.8 · builder"
     refute named =~ "openai-compatible"
     assert unnamed =~ "#2"
   end
