@@ -20,9 +20,12 @@ defmodule Sak.Chat do
   def live_id, do: @live_id
 
   def from_snapshot(snapshot) do
+    entries =
+      snapshot |> Map.get("entries", []) |> Enum.flat_map(&entry_items/1) |> index_items(0)
+
     %__MODULE__{
-      entries: snapshot |> Map.get("entries", []) |> Enum.flat_map(&entry_items/1),
-      live: live_item(Map.get(snapshot, "generation")),
+      entries: entries,
+      live: live_item(Map.get(snapshot, "generation"), length(entries)),
       running?: Map.get(snapshot, "run") != nil,
       usage: Map.get(snapshot, "usage", %{}),
       agent: Map.get(snapshot, "agent", %{})
@@ -56,7 +59,7 @@ defmodule Sak.Chat do
          "type" => "message_start",
          "message" => %{"role" => "assistant"} = message
        }) do
-    live = %{id: @live_id, role: :assistant, blocks: blocks(message["content"])}
+    live = live_item(%{"message" => message}, length(chat.entries))
     {%{chat | live: live}, [{:insert, live}]}
   end
 
@@ -70,7 +73,7 @@ defmodule Sak.Chat do
   end
 
   defp apply_event(chat, %{"type" => "message_end", "entry" => entry}) do
-    items = entry_items(entry)
+    items = entry |> entry_items() |> index_items(length(chat.entries))
     replaces_live? = Enum.any?(items, &(&1.role == :assistant))
     {live, deleted} = settle_live(chat.live, replaces_live?)
     inserted = Enum.map(items, &{:insert, &1})
@@ -106,11 +109,11 @@ defmodule Sak.Chat do
     {chat, []}
   end
 
-  defp live_item(%{"message" => %{"content" => content}}) do
-    %{id: @live_id, role: :assistant, blocks: blocks(content)}
+  defp live_item(%{"message" => %{"content" => content}}, index) do
+    %{id: @live_id, role: :assistant, blocks: blocks(content), index: index}
   end
 
-  defp live_item(_generation) do
+  defp live_item(_generation, _index) do
     nil
   end
 
@@ -157,6 +160,12 @@ defmodule Sak.Chat do
   defp put_block(blocks, index, block) do
     padding = List.duplicate(%{type: :text, text: ""}, max(index + 1 - length(blocks), 0))
     List.replace_at(blocks ++ padding, index, block)
+  end
+
+  defp index_items(items, start) do
+    items
+    |> Enum.with_index(start)
+    |> Enum.map(fn {item, index} -> Map.put(item, :index, index) end)
   end
 
   defp entry_items(%{"model" => messages, "id" => id}) do

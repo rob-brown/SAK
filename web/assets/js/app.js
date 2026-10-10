@@ -24,15 +24,28 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/sak"
 import topbar from "../vendor/topbar"
+import AutoFocus from "./hooks/auto_focus"
 import {ChatScroll} from "./hooks/chat_scroll"
-import {KeyRouter} from "./hooks/key_router"
-import {PromptBox} from "./hooks/prompt_box"
+import CommandInput from "./hooks/command_input"
+import KeyRouter from "./hooks/key_router"
+import PromptBox from "./hooks/prompt_box"
+import ScrollSelected from "./hooks/scroll_selected"
+import WizardInput from "./hooks/wizard_input"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, ChatScroll, KeyRouter, PromptBox},
+  hooks: {
+    ...colocatedHooks,
+    AutoFocus,
+    ChatScroll,
+    CommandInput,
+    KeyRouter,
+    PromptBox,
+    ScrollSelected,
+    WizardInput,
+  },
 })
 
 // Show progress bar on live navigation and form submits

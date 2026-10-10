@@ -14,9 +14,7 @@ defmodule SakWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <main>
-      {render_slot(@inner_block)}
-    </main>
+    {render_slot(@inner_block)}
 
     <.flash_group flash={@flash} />
     """

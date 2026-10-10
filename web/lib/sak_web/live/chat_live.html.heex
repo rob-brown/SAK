@@ -1,0 +1,232 @@
+<Layouts.app flash={@flash}>
+  <div
+    id="sak"
+    phx-hook="KeyRouter"
+    data-focused-pane={@focused_pane}
+    data-help-open={to_string(@help_open?)}
+    data-wizard-open={to_string(@new_session != nil)}
+    data-command-open={to_string(@command_open?)}
+    class="flex flex-col h-screen bg-neutral-950 text-neutral-100 font-mono text-sm"
+  >
+    <div class="flex flex-1 min-h-0 gap-2 p-2">
+      <aside id="sidebar" class={sidebar_classes(@zoomed_pane)}>
+        <p class="px-1 text-neutral-500 text-xs shrink-0">
+          {if @gateway_up?, do: "connected", else: "connecting…"}
+        </p>
+
+        <div
+          id="sessions-pane"
+          class={[pane_classes(@focused_pane, :sessions_and_logs, @zoomed_pane), "flex-1"]}
+        >
+          <div class="flex border-b border-neutral-800 text-neutral-400 shrink-0">
+            <button
+              phx-click="switch_tab"
+              phx-value-tab="sessions"
+              class={["px-2 py-1", @sidebar_tab == :sessions && "text-neutral-100 bg-neutral-900"]}
+            >
+              1 Sessions
+            </button>
+            <button
+              phx-click="switch_tab"
+              phx-value-tab="logs"
+              class={["px-2 py-1", @sidebar_tab == :logs && "text-neutral-100 bg-neutral-900"]}
+            >
+              Logs
+            </button>
+            <span
+              :if={@zoomed_pane == :sessions_and_logs}
+              class="ml-auto px-2 py-1 text-xs text-yellow-600"
+            >
+              zoomed — z to restore
+            </span>
+          </div>
+
+          <ul :if={@sidebar_tab == :sessions} id="sidebar-sessions" class="overflow-y-auto flex-1">
+            <li :if={@session_rows == []} class="px-2 py-2 text-neutral-600">
+              no sessions yet — n to start one
+            </li>
+            <li :for={{row, index} <- Enum.with_index(@session_rows)}>
+              <%= case row do %>
+                <% {:header, project} -> %>
+                  <div
+                    phx-click="toggle_row"
+                    phx-value-index={index}
+                    class={header_classes(index, @sessions_selected)}
+                  >
+                    <span class="truncate">{disclosure(project)} {header_label(project)}</span>
+                    <span :if={project.collapsed?} class="shrink-0 text-neutral-500 font-normal">
+                      ({project.count})
+                    </span>
+                  </div>
+                <% {:session, session} -> %>
+                  <div
+                    id={"conversation-#{session["id"]}"}
+                    phx-click="select_session"
+                    phx-value-id={session["id"]}
+                    class={session_row_classes(@current_id, session, index, @sessions_selected)}
+                  >
+                    <span class={status_glyph_class(session, @current_id, @chat)}>{status_glyph(
+                      session,
+                      @current_id,
+                      @chat
+                    )}</span>
+                    <span class="truncate">{session_label(session)} — {session["model"]}</span>
+                  </div>
+              <% end %>
+            </li>
+          </ul>
+
+          <ul
+            :if={@sidebar_tab == :logs}
+            id="sidebar-logs"
+            class="overflow-y-auto flex-1 p-2 text-xs text-neutral-400 space-y-0.5"
+          >
+            <li :for={line <- ConnectionLog.lines(@connection_log)}>{line}</li>
+          </ul>
+        </div>
+      </aside>
+
+      <main
+        id="chat-history-pane"
+        class={["flex-1 min-w-0", pane_classes(@focused_pane, :chat_history, @zoomed_pane)]}
+      >
+        <% {current_match, match_count} = Search.summary(assigns) %>
+
+        <div class="px-2 py-1 border-b border-neutral-800 text-neutral-400 shrink-0 flex justify-between items-center gap-2">
+          <span>0 Chat History</span>
+          <span :if={@zoomed_pane == :chat_history} class="text-xs text-yellow-600 shrink-0">
+            zoomed — z to restore
+          </span>
+          <span :if={@chat_search_term != ""} class="text-xs text-neutral-500 truncate">
+            /{@chat_search_term} ({Search.count_label(@chat_search_match_index, match_count)})
+          </span>
+          <span class="text-xs text-neutral-600 shrink-0">
+            t {if @thinking_visible?, do: "on", else: "off"} · o {if @tool_output_visible?,
+              do: "on",
+              else: "off"}
+          </span>
+          <span :if={!@gateway_up?} class="text-red-500 font-bold shrink-0">reconnecting…</span>
+        </div>
+
+        <form
+          :if={@chat_search_open?}
+          id="chat-search-form"
+          phx-change="chat_search_change"
+          phx-submit="chat_search_next"
+          class="px-2 py-1 border-b border-neutral-800 shrink-0 flex items-center gap-2"
+        >
+          <input
+            id="chat-search-input"
+            type="text"
+            name="term"
+            value={@chat_search_term}
+            phx-hook="AutoFocus"
+            placeholder="Search this chat…"
+            autocomplete="off"
+            class="flex-1 bg-neutral-950 text-neutral-100 px-2 py-1 outline-none border border-neutral-800 rounded text-xs"
+          />
+          <button
+            type="button"
+            phx-click="close_chat_search"
+            class="text-neutral-400 hover:text-neutral-100 text-xs"
+          >
+            esc
+          </button>
+        </form>
+
+        <div id="chat-history" phx-hook="ChatScroll" class="flex-1 overflow-y-auto p-4">
+          <p :if={@current_id == nil} id="no-session" class="text-neutral-600">
+            no active session — enter to select, n to start one
+          </p>
+
+          <div id="chat-messages" class="space-y-1" phx-update="stream">
+            <.message
+              :for={{dom_id, item} <- @streams.messages}
+              id={dom_id}
+              item={item}
+              opts={Items.visibility(assigns)}
+              term={@chat_search_term}
+              current={current_match}
+            />
+          </div>
+        </div>
+
+        <div :if={@current_id} class="relative shrink-0">
+          <div
+            :if={@mention_open?}
+            id="mention-dropdown"
+            class="absolute bottom-full left-2 mb-1 w-80 max-h-56 overflow-y-auto bg-neutral-900 border border-neutral-700 rounded-md shadow-lg z-40 text-xs"
+          >
+            <% {mention_label, mention_matches} = mention_results(assigns) %>
+            <p :if={@mention_loading?} class="px-2 py-1 text-neutral-500">indexing…</p>
+            <p
+              :if={!@mention_loading? and mention_matches == []}
+              class="px-2 py-1 text-neutral-600"
+            >
+              no matches
+            </p>
+            <ul :if={!@mention_loading?}>
+              <li
+                :for={{path, index} <- Enum.with_index(mention_matches)}
+                phx-click="mention_select_index"
+                phx-value-index={index}
+                class={[
+                  "px-2 py-1 cursor-pointer truncate",
+                  index == @mention_selected && "bg-neutral-800"
+                ]}
+              >
+                {mention_label}{path}
+              </li>
+            </ul>
+          </div>
+
+          <form
+            id={"prompt-form-#{@form_generation}"}
+            phx-submit="send"
+            class="border-t border-neutral-800 p-2"
+          >
+            <input type="hidden" name="queue" value="steer" />
+            <textarea
+              id={"prompt-textarea-#{@form_generation}"}
+              phx-hook="PromptBox"
+              name="content"
+              rows="3"
+              placeholder="Message… (enter to send or steer, alt+enter to queue a follow-up, shift+enter for a newline, @ to mention a file, : on an empty prompt for commands)"
+              autocomplete="off"
+              class="w-full resize-none bg-neutral-900 text-neutral-100 px-2 py-1 outline-none"
+            ></textarea>
+          </form>
+        </div>
+      </main>
+    </div>
+
+    <% status = status_line(@last_error, @last_notice, @current_id, @chat) %>
+    <div class="px-2 py-1 min-h-7 border-t border-neutral-800 text-neutral-500 shrink-0 flex">
+      <p id="status-line" class="truncate min-w-0">{status}</p>
+      <p id="hint-bar" class={["shrink-0 text-neutral-400", status != "" && "ml-4"]}>
+        {Hints.text(Hints.for_assigns(assigns))}
+      </p>
+      <button
+        :if={@chat.running?}
+        id="abort-button"
+        phx-click="abort"
+        class="ml-auto shrink-0 text-red-400 hover:text-red-300"
+      >
+        abort
+      </button>
+    </div>
+
+    <.wizard :if={@new_session} new_session={@new_session} />
+    <.command
+      :if={@command_open?}
+      query={@command_query}
+      results={@command_results}
+      selected={@command_selected}
+    />
+    <.help
+      :if={@help_open?}
+      rows={help_rows(@focused_pane, @sidebar_tab, @help_search)}
+      search={@help_search}
+    />
+  </div>
+</Layouts.app>

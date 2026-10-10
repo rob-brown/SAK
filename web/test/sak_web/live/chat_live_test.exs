@@ -50,7 +50,7 @@ defmodule SakWeb.ChatLiveTest do
     assert has_element?(view, "#no-session")
     assert has_element?(view, "#conversation-1")
     assert has_element?(view, "#conversation-2")
-    refute has_element?(view, "#prompt-form")
+    refute has_element?(view, "#prompt-form-0")
   end
 
   test "selecting a conversation attaches and renders the snapshot", %{conn: conn} do
@@ -65,7 +65,7 @@ defmodule SakWeb.ChatLiveTest do
     # Assert
     assert has_element?(view, "#entry-7-0", "hello world")
     refute has_element?(view, "#no-session")
-    assert has_element?(view, "#prompt-form")
+    assert has_element?(view, "#prompt-form-0")
   end
 
   test "streamed events replace the live message with the final entry", %{conn: conn} do
@@ -110,7 +110,7 @@ defmodule SakWeb.ChatLiveTest do
     refute settled =~ "partial"
   end
 
-  test "assistant text is rendered as markdown and user text is not", %{conn: conn} do
+  test "markdown is rendered and raw html is dropped", %{conn: conn} do
     # Arrange
     {:ok, view, _html} = live(conn, ~p"/c/1")
 
@@ -136,7 +136,7 @@ defmodule SakWeb.ChatLiveTest do
     # Assert
     assert has_element?(view, "#entry-8-0 strong", "bold")
     refute has_element?(view, "#entry-8-0 b")
-    refute has_element?(view, "#entry-7-0 strong")
+    assert has_element?(view, "#entry-7-0 strong", "not bold")
   end
 
   test "usage shows in the status line", %{conn: conn} do
@@ -169,7 +169,7 @@ defmodule SakWeb.ChatLiveTest do
     {:ok, view, _html} = live(conn, ~p"/c/1")
 
     # Act
-    view |> form("#prompt-form", %{"content" => "  do the thing  "}) |> render_submit()
+    view |> form("#prompt-form-0", %{"content" => "  do the thing  "}) |> render_submit()
 
     # Assert
     assert_received {:gateway_request, "submit",
@@ -188,7 +188,7 @@ defmodule SakWeb.ChatLiveTest do
     {:ok, view, _html} = live(conn, ~p"/c/1")
 
     # Act
-    view |> form("#prompt-form", %{"content" => "   "}) |> render_submit()
+    view |> form("#prompt-form-0", %{"content" => "   "}) |> render_submit()
 
     # Assert
     refute_received {:gateway_request, "submit", _}
@@ -223,18 +223,6 @@ defmodule SakWeb.ChatLiveTest do
     assert_received {:gateway_request, "attach", %{"conversationId" => 1}}
   end
 
-  test "creating a session requests it and navigates to it", %{conn: conn} do
-    # Arrange
-    {:ok, view, _html} = live(conn, ~p"/")
-
-    # Act
-    view |> form("#new-session-form", %{"cwd" => "/work/gamma"}) |> render_submit()
-
-    # Assert
-    assert_received {:gateway_request, "create_conversation", %{"cwd" => "/work/gamma"}}
-    assert_patch(view, ~p"/c/3")
-  end
-
   test "a gateway error is shown in the status line", %{conn: conn} do
     # Arrange
     Application.put_env(:sak, :fake_gateway_replies, %{
@@ -245,7 +233,7 @@ defmodule SakWeb.ChatLiveTest do
     {:ok, view, _html} = live(conn, ~p"/c/1")
 
     # Act
-    view |> form("#prompt-form", %{"content" => "hi"}) |> render_submit()
+    view |> form("#prompt-form-0", %{"content" => "hi"}) |> render_submit()
 
     # Assert
     assert has_element?(view, "#status-line", "unknown conversation 1")

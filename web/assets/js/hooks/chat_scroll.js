@@ -14,6 +14,7 @@ export const ChatScroll = {
       if (this.pinned) this.scrollToBottom()
     })
     this.observer.observe(this.el, {childList: true, subtree: true, characterData: true})
+    this.handleEvent("scroll_to_match", () => this.scrollToCurrentMatch())
     this.scrollToBottom()
   },
 
@@ -23,5 +24,12 @@ export const ChatScroll = {
 
   scrollToBottom() {
     this.el.scrollTop = this.el.scrollHeight
+  },
+
+  scrollToCurrentMatch() {
+    const match = this.el.querySelector(".chat-match-current")
+    if (!match) return
+    this.pinned = false
+    match.scrollIntoView({block: "center"})
   },
 }
