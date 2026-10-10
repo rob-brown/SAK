@@ -68,6 +68,36 @@ defmodule Sak.ChatTest do
              ] = blocks
     end
 
+    test "restores the in-flight assistant message from the generation field" do
+      # Arrange
+      snapshot = %{
+        "entries" => [user_entry(8, "count")],
+        "run" => %{"inputs" => [9]},
+        "generation" => %{
+          "attempt" => 1,
+          "message" => %{
+            "role" => "assistant",
+            "content" => [%{"type" => "text", "text" => "1\n2\n"}]
+          }
+        }
+      }
+
+      # Act
+      chat = Chat.from_snapshot(snapshot)
+
+      {continued, _ops} =
+        Chat.apply_events(chat, [
+          %{
+            "type" => "message_update",
+            "changes" => [%{"type" => "text_delta", "contentIndex" => 0, "delta" => "3\n"}]
+          }
+        ])
+
+      # Assert
+      assert [%{role: :user}, %{id: "live", blocks: [%{text: "1\n2\n"}]}] = Chat.items(chat)
+      assert [%{text: "1\n2\n3\n"}] = continued.live.blocks
+    end
+
     test "marks the chat running when the snapshot carries a run" do
       # Arrange
       snapshot = %{"entries" => [], "run" => %{"inputs" => [8]}}

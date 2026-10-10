@@ -22,6 +22,7 @@ defmodule Sak.Chat do
   def from_snapshot(snapshot) do
     %__MODULE__{
       entries: snapshot |> Map.get("entries", []) |> Enum.flat_map(&entry_items/1),
+      live: live_item(Map.get(snapshot, "generation")),
       running?: Map.get(snapshot, "run") != nil,
       usage: Map.get(snapshot, "usage", %{}),
       agent: Map.get(snapshot, "agent", %{})
@@ -95,6 +96,14 @@ defmodule Sak.Chat do
 
   defp apply_event(chat, _event) do
     {chat, []}
+  end
+
+  defp live_item(%{"message" => %{"content" => content}}) do
+    %{id: @live_id, role: :assistant, blocks: blocks(content)}
+  end
+
+  defp live_item(_generation) do
+    nil
   end
 
   defp settle_live(live, true) do
