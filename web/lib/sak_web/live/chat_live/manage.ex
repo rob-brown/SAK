@@ -6,11 +6,12 @@ defmodule SakWeb.ChatLive.Manage do
   alias SakWeb.ChatLive.Render
   alias SakWeb.ChatLive.Sessions
 
-  def toggle_archive(socket) do
-    case Sessions.cursor_row(socket.assigns) do
-      {:session, session} -> update_meta(socket, session["id"], %{"state" => flip(session)})
-      _header_or_nothing -> socket
-    end
+  def archive(socket) do
+    change_state(socket, "active", "archived")
+  end
+
+  def restore(socket) do
+    change_state(socket, "archived", "active")
   end
 
   def ask_delete(socket) do
@@ -62,8 +63,15 @@ defmodule SakWeb.ChatLive.Manage do
     Component.assign(socket, rename: nil)
   end
 
-  defp flip(%{"state" => "archived"}), do: "active"
-  defp flip(_session), do: "archived"
+  defp change_state(socket, from, to) do
+    case Sessions.cursor_row(socket.assigns) do
+      {:session, %{"state" => ^from} = session} ->
+        update_meta(socket, session["id"], %{"state" => to})
+
+      _other_state_or_header ->
+        socket
+    end
+  end
 
   defp update_meta(socket, id, fields) do
     case client().request("set_meta", Map.put(fields, "conversationId", id)) do

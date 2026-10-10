@@ -47,7 +47,7 @@ defmodule Sak.Hints do
     [
       {"Switch", "<enter>"},
       {"Rename", "r"},
-      {archive_label(session), "a"},
+      archive_hint(session),
       {"Delete", "d"},
       {"Filter", "/"}
     ]
@@ -57,6 +57,6 @@ defmodule Sak.Hints do
     [{"Filter", "/"}]
   end
 
-  defp archive_label(%{"state" => "archived"}), do: "Unarchive"
-  defp archive_label(_session), do: "Archive"
+  defp archive_hint(%{"state" => "archived"}), do: {"Restore", "R"}
+  defp archive_hint(_session), do: {"Archive", "a"}
 end

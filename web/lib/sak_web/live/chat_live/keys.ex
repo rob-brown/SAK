@@ -146,7 +146,11 @@ defmodule SakWeb.ChatLive.Keys do
   end
 
   defp sessions_key("a", socket) do
-    Manage.toggle_archive(socket)
+    Manage.archive(socket)
+  end
+
+  defp sessions_key("R", socket) do
+    Manage.restore(socket)
   end
 
   defp sessions_key("A", socket) do

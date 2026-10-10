@@ -31,7 +31,8 @@ defmodule Sak.Keybindings do
       {"enter", "Switch to the selected session, or expand or collapse the selected project"},
       {"/", "Filter the sessions by name, directory or model"},
       {"r", "Rename the selected session"},
-      {"a", "Archive the selected session, or unarchive it when it is archived"},
+      {"a", "Archive the selected session (no confirmation; A shows archived sessions)"},
+      {"R", "Restore the selected archived session"},
       {"A", "Show or hide archived sessions"},
       {"d", "Delete the selected session (it is hidden for good, with a confirmation first)"}
     ]

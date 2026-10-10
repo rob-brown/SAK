@@ -86,17 +86,21 @@ defmodule SakWeb.SessionsManagementTest do
     refute has_element?(view, "#conversation-3")
   end
 
-  test "a archives the selected session and unarchives an archived one", %{conn: conn} do
+  test "a archives immediately and R restores, each only from the matching state", %{conn: conn} do
     # Arrange
     {:ok, view, _html} = live(conn, ~p"/")
     cursor_to(view, 2)
 
     # Act
+    press(view, "R")
+    refute_received {:gateway_request, "set_meta", _}
     press(view, "a")
 
     # Assert
     assert_received {:gateway_request, "set_meta",
                      %{"conversationId" => 1, "state" => "archived"}}
+
+    refute has_element?(view, "#delete-confirm")
 
     # Arrange
     press(view, "A")
@@ -104,6 +108,8 @@ defmodule SakWeb.SessionsManagementTest do
 
     # Act
     press(view, "a")
+    refute_received {:gateway_request, "set_meta", _}
+    press(view, "R")
 
     # Assert
     assert_received {:gateway_request, "set_meta", %{"conversationId" => 3, "state" => "active"}}
