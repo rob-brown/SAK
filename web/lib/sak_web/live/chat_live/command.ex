@@ -4,6 +4,7 @@ defmodule SakWeb.ChatLive.Command do
   alias Phoenix.Component
   alias Phoenix.LiveView
   alias Sak.Command
+  alias SakWeb.ChatLive.Models
 
   def open(socket) do
     socket |> Component.assign(command_open?: true) |> query("")
@@ -41,6 +42,10 @@ defmodule SakWeb.ChatLive.Command do
 
   def run_index(socket, index) do
     socket |> Component.assign(command_selected: index) |> run()
+  end
+
+  defp execute(socket, %Command{name: "model"}) do
+    Models.open(socket)
   end
 
   defp execute(%{assigns: %{current_id: nil}} = socket, _command) do

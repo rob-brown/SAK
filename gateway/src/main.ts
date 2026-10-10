@@ -1,6 +1,7 @@
 import { createInterface } from "node:readline";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
+import { listEndpointModels } from "./endpoint.ts";
 import { loadConfig } from "./config.ts";
 import { Gateway } from "./gateway.ts";
 import { createConfiguredModels, PROVIDER_ID } from "./models.ts";
@@ -18,6 +19,7 @@ const send = (message: Outgoing) => {
 const gateway = new Gateway({
 	cwd: config.cwd,
 	harness,
+	listModels: () => listEndpointModels(config.baseUrl, config.apiKey),
 	model: { provider: PROVIDER_ID, modelId: config.modelId },
 	send,
 	storage,

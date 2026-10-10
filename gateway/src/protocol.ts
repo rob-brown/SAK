@@ -7,6 +7,7 @@ export type Command =
 	| { id: string; type: "detach"; conversationId: number }
 	| { id: string; type: "fork"; conversationId: number; at: number }
 	| { id: string; type: "list_conversations" }
+	| { id: string; type: "list_models" }
 	| { id: string; type: "submit"; conversationId: number; content: string; whenBusy?: WhenBusy; requestId?: string };
 
 export type ConversationSummary = {

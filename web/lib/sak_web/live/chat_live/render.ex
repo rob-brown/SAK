@@ -60,6 +60,12 @@ defmodule SakWeb.ChatLive.Render do
     Help.rows(focused_pane, sidebar_tab, Help.parse_query(raw_query))
   end
 
+  def conversation_model(%{agent: %{"model" => %{"provider" => provider, "modelId" => id}}}) do
+    "#{provider}/#{id}"
+  end
+
+  def conversation_model(_chat), do: nil
+
   def mention_results(assigns), do: Mention.results(assigns)
 
   def status_line(error, _notice, _id, _chat) when is_binary(error), do: "error: #{error}"

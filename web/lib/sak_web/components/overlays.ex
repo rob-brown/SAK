@@ -105,6 +105,67 @@ defmodule SakWeb.Overlays do
     """
   end
 
+  attr :models, :map, required: true
+  attr :conversation_model, :string, default: nil
+
+  def models(assigns) do
+    assigns = assign(assigns, visible: SakWeb.ChatLive.Models.visible(assigns.models))
+
+    ~H"""
+    <.overlay id="models-overlay">
+      <div class="px-3 py-2 border-b border-neutral-800 flex items-center justify-between shrink-0">
+        <span class="font-semibold">Models</span>
+        <button phx-click="close_models" class="text-neutral-400 hover:text-neutral-100">esc</button>
+      </div>
+
+      <div class="px-3 py-2 border-b border-neutral-800 text-xs text-neutral-400 shrink-0 space-y-0.5">
+        <p>
+          gateway default: <span id="models-default" class="text-neutral-100">{@models.current}</span>
+        </p>
+        <p :if={@conversation_model}>
+          this conversation:
+          <span id="models-conversation" class="text-neutral-100">{@conversation_model}</span>
+        </p>
+      </div>
+
+      <form
+        id="models-search-form"
+        phx-change="models_search"
+        class="px-3 py-2 border-b border-neutral-800 shrink-0"
+      >
+        <input
+          id="models-search-input"
+          type="text"
+          name="query"
+          value={@models.query}
+          phx-hook="AutoFocus"
+          placeholder="Search models"
+          autocomplete="off"
+          class="w-full bg-neutral-950 text-neutral-100 px-2 py-1 outline-none border border-neutral-800 rounded"
+        />
+      </form>
+
+      <p :if={@visible == []} id="models-empty" class="px-3 py-3 text-neutral-500">no matches</p>
+
+      <ul id="models-list" class="overflow-y-auto p-1">
+        <li
+          :for={{id, index} <- Enum.with_index(@visible)}
+          id={"model-#{index}"}
+          class="px-2 py-1 flex gap-3"
+        >
+          <span class="truncate">{id}</span>
+          <span
+            :if={String.ends_with?(@models.current || "", "/" <> id)}
+            class="ml-auto shrink-0 text-xs text-green-400"
+          >
+            in use
+          </span>
+        </li>
+      </ul>
+    </.overlay>
+    """
+  end
+
   attr :new_session, :map, required: true
 
   def wizard(assigns) do

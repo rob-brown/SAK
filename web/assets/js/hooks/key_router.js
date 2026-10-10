@@ -60,6 +60,7 @@ function focusedPane(root) {
 export function isModalOpen(dataset) {
   return (
     dataset.helpOpen === "true" ||
+    dataset.modelsOpen === "true" ||
     dataset.wizardOpen === "true" ||
     dataset.commandOpen === "true"
   )

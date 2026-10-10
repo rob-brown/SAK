@@ -5,6 +5,7 @@ defmodule Sak.Hints do
   def for_assigns(assigns) do
     cond do
       assigns.help_open? -> [{"Close", "<esc>"}]
+      assigns.models != nil -> [{"Close", "<esc>"}]
       assigns.new_session != nil -> []
       assigns.command_open? -> []
       assigns.chat_search_open? -> []

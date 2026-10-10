@@ -17,6 +17,7 @@ const LIST_LIMIT = 500;
 export type GatewayOptions = {
 	readonly cwd: string;
 	readonly harness: Harness;
+	readonly listModels: () => Promise<readonly string[]>;
 	readonly model: ModelRef;
 	readonly send: (message: Outgoing) => void;
 	readonly storage: Storage;
@@ -59,9 +60,15 @@ export class Gateway {
 				return this.fork(command.conversationId, command.at);
 			case "list_conversations":
 				return this.list();
+			case "list_models":
+				return this.models();
 			case "submit":
 				return this.submit(command);
 		}
+	}
+
+	private async models() {
+		return { current: this.options.model, models: await this.options.listModels() };
 	}
 
 	private async abort(conversationId: number) {

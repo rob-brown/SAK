@@ -10,6 +10,7 @@ test("no modal is open when none of the flags are set", () => {
 
 test("help, the wizard and the command bar each count as a modal", () => {
   assert.equal(isModalOpen({helpOpen: "true"}), true)
+  assert.equal(isModalOpen({modelsOpen: "true"}), true)
   assert.equal(isModalOpen({wizardOpen: "true"}), true)
   assert.equal(isModalOpen({commandOpen: "true"}), true)
 })

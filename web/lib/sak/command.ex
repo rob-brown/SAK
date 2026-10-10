@@ -17,6 +17,10 @@ defmodule Sak.Command do
   def list do
     [
       %__MODULE__{
+        name: "model",
+        description: "List the models the endpoint offers and show the one in use"
+      },
+      %__MODULE__{
         name: "clear",
         aliases: ["new"],
         description: "Reset the conversation to a fresh session"

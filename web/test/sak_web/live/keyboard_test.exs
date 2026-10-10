@@ -188,12 +188,43 @@ defmodule SakWeb.KeyboardTest do
     # Act
     press(view, ":")
     opened = has_element?(view, "#command-overlay")
+    view |> form("#command-form", %{"query" => "clear"}) |> render_change()
     view |> form("#command-form") |> render_submit()
 
     # Assert
     assert opened
     assert_received {:gateway_request, "create_conversation", %{"cwd" => "/work/alpha"}}
     assert_patch(view, ~p"/c/3")
+  end
+
+  test "the model command lists the endpoint's models and marks the one in use", %{conn: conn} do
+    # Arrange
+    Application.put_env(:sak, :fake_gateway_replies, %{
+      "list_conversations" => {:ok, %{"conversations" => @conversations}},
+      "list_models" =>
+        {:ok,
+         %{
+           "current" => %{"provider" => "openai-compatible", "modelId" => "ornith"},
+           "models" => ["ornith", "qwen"]
+         }}
+    })
+
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    # Act
+    press(view, ":")
+    view |> form("#command-form", %{"query" => "model"}) |> render_change()
+    view |> form("#command-form") |> render_submit()
+    listed = has_element?(view, "#models-list li", "qwen")
+    view |> form("#models-search-form", %{"query" => "orn"}) |> render_change()
+
+    # Assert
+    assert listed
+    assert has_element?(view, "#models-default", "openai-compatible/ornith")
+    assert has_element?(view, "#models-list li", "in use")
+    refute has_element?(view, "#models-list li", "qwen")
+    press(view, "escape")
+    refute has_element?(view, "#models-overlay")
   end
 
   test "z zooms the focused pane and numbers focus panes", %{conn: conn} do

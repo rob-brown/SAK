@@ -4,6 +4,7 @@
     phx-hook="KeyRouter"
     data-focused-pane={@focused_pane}
     data-help-open={to_string(@help_open?)}
+    data-models-open={to_string(@models != nil)}
     data-wizard-open={to_string(@new_session != nil)}
     data-command-open={to_string(@command_open?)}
     class="flex flex-col h-screen bg-neutral-950 text-neutral-100 font-mono text-sm"
@@ -216,6 +217,7 @@
       </button>
     </div>
 
+    <.models :if={@models} models={@models} conversation_model={conversation_model(@chat)} />
     <.wizard :if={@new_session} new_session={@new_session} />
     <.command
       :if={@command_open?}

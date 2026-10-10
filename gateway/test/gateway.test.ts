@@ -19,6 +19,7 @@ async function setup() {
 	const gateway = new Gateway({
 		cwd: process.cwd(),
 		harness,
+		listModels: async () => ["alpha", "beta"],
 		model: { provider: model.provider, modelId: model.id },
 		send: (message) => outgoing.push(message),
 		storage,
@@ -119,5 +120,19 @@ test("attaching twice sends a fresh snapshot each time", async () => {
 
 	// Assert
 	assert.equal(outgoing.filter((message) => message.type === "snapshot").length, 2);
+	await close();
+});
+
+test("list_models returns the configured model and the endpoint's models", async () => {
+	// Arrange
+	const { close, gateway, outgoing } = await setup();
+
+	// Act
+	await gateway.handle({ id: "1", type: "list_models" });
+
+	// Assert
+	const listed = reply(outgoing, "1") as { result: { current: { modelId: string }; models: string[] } };
+	assert.deepEqual(listed.result.models, ["alpha", "beta"]);
+	assert.equal(typeof listed.result.current.modelId, "string");
 	await close();
 });

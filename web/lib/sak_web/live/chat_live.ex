@@ -9,6 +9,7 @@ defmodule SakWeb.ChatLive do
   alias SakWeb.ChatLive.Command
   alias SakWeb.ChatLive.Items
   alias SakWeb.ChatLive.Mention
+  alias SakWeb.ChatLive.Models
   alias SakWeb.ChatLive.NewSession
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
@@ -43,6 +44,7 @@ defmodule SakWeb.ChatLive do
         zoomed_pane: nil,
         help_open?: false,
         help_search: "",
+        models: nil,
         new_session: nil,
         command_open?: false,
         command_query: "",
@@ -121,6 +123,14 @@ defmodule SakWeb.ChatLive do
     {:noreply, socket}
   end
 
+  def handle_event("key", %{"key" => "escape"}, %{assigns: %{models: %{}}} = socket) do
+    {:noreply, Models.close(socket)}
+  end
+
+  def handle_event("key", _params, %{assigns: %{models: %{}}} = socket) do
+    {:noreply, socket}
+  end
+
   def handle_event("key", %{"key" => "escape"}, %{assigns: %{new_session: %{}}} = socket) do
     {:noreply, NewSession.back(socket)}
   end
@@ -192,6 +202,14 @@ defmodule SakWeb.ChatLive do
 
   def handle_event("wizard_select_index", %{"index" => index}, socket) do
     {:noreply, NewSession.select_index(socket, String.to_integer(index))}
+  end
+
+  def handle_event("models_search", %{"query" => query}, socket) do
+    {:noreply, Models.search(socket, query)}
+  end
+
+  def handle_event("close_models", _params, socket) do
+    {:noreply, Models.close(socket)}
   end
 
   def handle_event("help_search", %{"query" => query}, socket) do
