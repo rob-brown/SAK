@@ -6,9 +6,9 @@ defmodule Sak.ChatFields do
 
   @tool_output_char_limit 2_000
   @argument_char_limit 120
-  @summary_keys ["command", "path", "file_path"]
+  @summary_keys ["command", "path", "file_path", "code"]
 
-  @type kind :: :content | :reasoning | :description | :tool_content | :error
+  @type kind :: :content | :reasoning | :description | :code_call | :tool_content | :error
   @type field :: %{index: non_neg_integer(), kind: kind(), text: String.t()}
   @type opts :: %{thinking_visible?: boolean(), tool_output_visible?: boolean()}
 
@@ -31,6 +31,15 @@ defmodule Sak.ChatFields do
   end
 
   defp block_field(%{type: :thinking}, _index, _opts), do: []
+
+  defp block_field(
+         %{type: :tool_call, name: "codemode", arguments: %{"code" => code}},
+         index,
+         _opts
+       )
+       when is_binary(code) do
+    present(index, :code_call, "codemode\n\n" <> fenced(code))
+  end
 
   defp block_field(%{type: :tool_call} = block, index, _opts) do
     present(index, :description, describe(block))
@@ -64,6 +73,36 @@ defmodule Sak.ChatFields do
   defp describe(%{name: name, arguments: arguments}) do
     "#{name} #{summarize(arguments)}"
   end
+
+  defp fenced(code) do
+    fence = String.duplicate("`", max(3, longest_backtick_run(code) + 1))
+    fence <> "js\n" <> dedent(code) <> "\n" <> fence
+  end
+
+  defp longest_backtick_run(text) do
+    ~r/`+/
+    |> Regex.scan(text)
+    |> Enum.map(fn [run] -> String.length(run) end)
+    |> Enum.max(fn -> 0 end)
+  end
+
+  defp dedent(code) do
+    lines =
+      code
+      |> String.trim_trailing()
+      |> String.split(~r/\r?\n/)
+      |> Enum.drop_while(&blank?/1)
+
+    indent =
+      lines
+      |> Enum.reject(&blank?/1)
+      |> Enum.map(&(String.length(&1) - String.length(String.trim_leading(&1))))
+      |> Enum.min(fn -> 0 end)
+
+    Enum.map_join(lines, "\n", &String.slice(&1, indent..-1//1))
+  end
+
+  defp blank?(line), do: String.trim(line) == ""
 
   defp summarize(arguments) when is_map(arguments) do
     case Enum.find_value(@summary_keys, &Map.get(arguments, &1)) do

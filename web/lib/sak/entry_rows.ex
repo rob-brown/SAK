@@ -7,7 +7,7 @@ defmodule Sak.EntryRows do
   """
 
   @text_limit 300
-  @summary_keys ["command", "path", "file_path"]
+  @summary_keys ["command", "path", "file_path", "code"]
 
   @type row :: %{
           number: pos_integer(),

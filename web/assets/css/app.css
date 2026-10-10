@@ -137,5 +137,7 @@
 }
 .chat-markdown a { text-decoration: underline; }
 
+.code-call > p:first-child { font-weight: 700; }
+
 .chat-match { background: #22d3ee; color: #0c1220; border-radius: 0.125rem; }
 .chat-match-current { background: #facc15; font-weight: 700; }
