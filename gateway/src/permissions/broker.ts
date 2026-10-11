@@ -14,6 +14,7 @@ export type PermissionRequest = {
 	readonly tool: string;
 	readonly arguments: Readonly<Record<string, unknown>>;
 	readonly summary: string;
+	readonly subagent?: number;
 };
 
 type Waiting = {

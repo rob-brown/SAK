@@ -62,6 +62,17 @@ defmodule SakWeb.PermissionTest do
                      %{"requestId" => "r1", "approval" => "allow"}}
   end
 
+  test "a request from a subagent says so" do
+    # Arrange
+    {:ok, view, _html} = live(build_conn(), ~p"/c/1")
+
+    # Act
+    send_request(view, Map.put(@request, "subagent", 12))
+
+    # Assert
+    assert has_element?(view, "#permission-subagent", "subagent #12")
+  end
+
   test "a denies for the session grant, and n and escape deny" do
     # Arrange
     {:ok, view, _html} = live(build_conn(), ~p"/c/1")

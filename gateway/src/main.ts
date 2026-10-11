@@ -8,7 +8,9 @@ import { ModelCatalog, PROVIDER_ID } from "./models.ts";
 import { openHarness } from "./open.ts";
 import { Authorizer } from "./permissions/authorizer.ts";
 import { PermissionBroker } from "./permissions/broker.ts";
+import { rootConversation } from "./permissions/root.ts";
 import type { Command, Outgoing } from "./protocol.ts";
+import { Semaphore } from "./subagents/semaphore.ts";
 
 const config = await loadConfig(process.env).catch((error: unknown) => {
 	process.stderr.write(`sak: ${error instanceof Error ? error.message : String(error)}\n`);
@@ -24,9 +26,10 @@ const send = (message: Outgoing) => {
 
 const broker = new PermissionBroker(send);
 const harness = await openHarness(storage, catalog.models, {
-	authorizer: new Authorizer(config.permissions, broker),
+	authorizer: new Authorizer(config.permissions, broker, rootConversation(storage)),
 	configDir: config.configDir,
 	instructionMaxChars: config.instructionMaxChars,
+	subagents: { personasDir: config.personasDir, semaphore: new Semaphore(config.subagentLimit) },
 });
 
 const gateway = new Gateway({

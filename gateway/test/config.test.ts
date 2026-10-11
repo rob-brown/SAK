@@ -97,6 +97,22 @@ test("permissions come from the file, and a bad mode or rule stops the load", as
 	);
 });
 
+test("the subagent limit defaults to six and can be set in the file", async () => {
+	// Arrange
+	const bare = await configDirWith();
+	const tuned = await configDirWith("[subagents]\nmax_concurrent = 3\n");
+
+	// Act
+	const [defaults, custom] = await Promise.all([
+		loadConfig({ SAK_CONFIG_DIR: bare }),
+		loadConfig({ SAK_CONFIG_DIR: tuned }),
+	]);
+
+	// Assert
+	assert.equal(defaults.subagentLimit, 6);
+	assert.equal(custom.subagentLimit, 3);
+});
+
 test("without permission settings every call that is not a plain read asks", async () => {
 	// Arrange
 	const SAK_CONFIG_DIR = await configDirWith();

@@ -17,6 +17,7 @@ export type Config = {
 	readonly modelId: string;
 	readonly permissions: Policy;
 	readonly personasDir: string;
+	readonly subagentLimit: number;
 	readonly warnings: readonly string[];
 };
 
@@ -29,7 +30,10 @@ const SCHEMA: Readonly<Record<string, Readonly<Record<string, Kind>>>> = {
 	instructions: { max_file_chars: "count" },
 	permissions: { allow: "list", ask: "list", deny: "list", mode: "mode" },
 	storage: { db: "text" },
+	subagents: { max_concurrent: "count" },
 };
+
+export const DEFAULT_SUBAGENT_LIMIT = 6;
 
 export async function loadConfig(env: NodeJS.ProcessEnv): Promise<Config> {
 	const configDir = env.SAK_CONFIG_DIR ?? join(env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "sak");
@@ -45,6 +49,7 @@ export async function loadConfig(env: NodeJS.ProcessEnv): Promise<Config> {
 		modelId: env.SAK_MODEL ?? text(values, "endpoint.model") ?? "ornith-1.5-35b-a3b",
 		permissions: policyFrom(path, values),
 		personasDir: join(configDir, "personas"),
+		subagentLimit: count(values, "subagents.max_concurrent") ?? DEFAULT_SUBAGENT_LIMIT,
 		warnings,
 	};
 }

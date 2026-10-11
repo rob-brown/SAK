@@ -48,6 +48,9 @@ defmodule SakWeb.Dialogs do
     >
       <div class="bg-neutral-900 border border-yellow-700 rounded-md w-[40rem] p-3 space-y-3">
         <p class="font-semibold">Allow {@request["tool"]}?</p>
+        <p :if={@request["subagent"]} id="permission-subagent" class="text-xs text-neutral-500">
+          Requested by subagent #{@request["subagent"]}
+        </p>
         <pre
           id="permission-summary"
           class="text-xs text-neutral-300 bg-neutral-950 border border-neutral-800 rounded p-2 whitespace-pre-wrap break-all max-h-60 overflow-auto"

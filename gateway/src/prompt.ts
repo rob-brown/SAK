@@ -3,6 +3,7 @@ const SNIPPETS: Readonly<Record<string, string>> = {
 	bash: "Execute bash commands (ls, grep, find, etc.)",
 	edit: "Make precise file edits with exact text replacement, including multiple disjoint edits in one call",
 	write: "Create or overwrite files",
+	agent: "Delegate independent tasks to subagents that run in parallel; pass prompts as a list and read the JSON list of answers",
 	codemode: "Run a JavaScript script that calls the other tools; only its output reaches you",
 };
 

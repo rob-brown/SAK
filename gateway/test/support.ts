@@ -9,10 +9,12 @@ import { Gateway } from "../src/gateway.ts";
 import { openHarness } from "../src/open.ts";
 import { Authorizer } from "../src/permissions/authorizer.ts";
 import { PermissionBroker } from "../src/permissions/broker.ts";
+import { rootConversation } from "../src/permissions/root.ts";
 import type { Policy } from "../src/permissions/rules.ts";
 import type { Outgoing } from "../src/protocol.ts";
+import { Semaphore } from "../src/subagents/semaphore.ts";
 
-export async function setup(policy?: Policy) {
+export async function setup(policy?: Policy, subagentLimit?: number) {
 	const faux = fauxProvider();
 	const models = createModels();
 	models.setProvider(faux.provider);
@@ -22,8 +24,13 @@ export async function setup(policy?: Policy) {
 	const outgoing: Outgoing[] = [];
 	const send = (message: Outgoing) => outgoing.push(message);
 	const broker = policy ? new PermissionBroker(send) : undefined;
-	const authorizer = policy && broker ? new Authorizer(policy, broker) : undefined;
-	const harness = await openHarness(storage, models, { configDir, ...(authorizer ? { authorizer } : {}) });
+	const authorizer = policy && broker ? new Authorizer(policy, broker, rootConversation(storage)) : undefined;
+	const subagents = subagentLimit ? { personasDir, semaphore: new Semaphore(subagentLimit) } : undefined;
+	const harness = await openHarness(storage, models, {
+		configDir,
+		...(authorizer ? { authorizer } : {}),
+		...(subagents ? { subagents } : {}),
+	});
 	const ensured: string[] = [];
 	const model = faux.getModel();
 	const gateway = new Gateway({
