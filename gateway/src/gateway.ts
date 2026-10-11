@@ -10,6 +10,7 @@ import {
 	watchEvents,
 } from "@earendil-works/pi-durable";
 import { readMeta, STATES, writeMeta } from "./meta.ts";
+import { type Approval, APPROVALS, type PermissionBroker } from "./permissions/broker.ts";
 import { DEFAULT_PERSONA_NAME, findPersona, loadPersonas } from "./personas.ts";
 import type { Command, ConversationSummary, Outgoing } from "./protocol.ts";
 import { toolsNamed } from "./tools.ts";
@@ -18,6 +19,7 @@ const context = BACKGROUND_CONTEXT;
 const LIST_LIMIT = 500;
 
 export type GatewayOptions = {
+	readonly broker?: PermissionBroker;
 	readonly cwd: string;
 	readonly ensureModel: (modelId: string) => Promise<void>;
 	readonly harness: Harness;
@@ -71,6 +73,8 @@ export class Gateway {
 				return this.personas();
 			case "list_models":
 				return this.models();
+			case "permission_reply":
+				return this.permissionReply(command.requestId, command.approval);
 			case "set_meta":
 				return this.setMeta(command);
 			case "set_model":
@@ -78,6 +82,11 @@ export class Gateway {
 			case "submit":
 				return this.submit(command);
 		}
+	}
+
+	private async permissionReply(requestId: string, approval: Approval) {
+		if (!APPROVALS.includes(approval)) throw new Error(`unknown approval ${approval}`);
+		return { resolved: this.options.broker?.reply(requestId, approval) ?? false };
 	}
 
 	private async models() {
@@ -109,6 +118,9 @@ export class Gateway {
 		const stream = await watchEvents(this.options.harness, conversationId as ConversationId, context);
 		this.watchers.set(conversationId, stream);
 		this.options.send({ type: "snapshot", conversationId, snapshot: stream.snapshot });
+		for (const request of this.options.broker?.pending(conversationId) ?? []) {
+			this.options.send({ type: "permission_request", ...request });
+		}
 		await stream.start(async (events) => {
 			this.options.send({ type: "events", conversationId, events });
 		});

@@ -62,10 +62,48 @@ test("a wrong type or malformed TOML fails loudly and names the file", async () 
 	const malformed = await configDirWith("[endpoint\n");
 
 	// Act
-	const typed = loadConfig({ SAK_CONFIG_DIR: wrongType });
-	const broken = loadConfig({ SAK_CONFIG_DIR: malformed });
+	const [typed, broken] = await Promise.allSettled([
+		loadConfig({ SAK_CONFIG_DIR: wrongType }),
+		loadConfig({ SAK_CONFIG_DIR: malformed }),
+	]);
 
 	// Assert
-	await assert.rejects(typed, /config\.toml: instructions\.max_file_chars must be a positive integer/);
-	await assert.rejects(broken, /config\.toml/);
+	assert.equal(typed.status, "rejected");
+	assert.equal(broken.status, "rejected");
+	assert.match(String((typed as PromiseRejectedResult).reason), /config\.toml: instructions\.max_file_chars must be a positive integer/);
+	assert.match(String((broken as PromiseRejectedResult).reason), /config\.toml/);
+});
+
+test("permissions come from the file, and a bad mode or rule stops the load", async () => {
+	// Arrange
+	const good = await configDirWith('[permissions]\nmode = "accept-edits"\nallow = ["Bash(ls *)"]\ndeny = ["Bash(rm *)"]\n');
+	const badMode = await configDirWith('[permissions]\nmode = "yolo"\n');
+	const badRule = await configDirWith('[permissions]\nallow = ["(nope)"]\n');
+
+	// Act
+	const config = await loadConfig({ SAK_CONFIG_DIR: good });
+	const results = await Promise.allSettled([
+		loadConfig({ SAK_CONFIG_DIR: badMode }),
+		loadConfig({ SAK_CONFIG_DIR: badRule }),
+	]);
+
+	// Assert
+	assert.equal(config.permissions.mode, "accept-edits");
+	assert.deepEqual(config.permissions.allow, [{ tool: "bash", pattern: "ls *" }]);
+	assert.deepEqual(config.permissions.deny, [{ tool: "bash", pattern: "rm *" }]);
+	assert.deepEqual(
+		results.map((result) => result.status),
+		["rejected", "rejected"],
+	);
+});
+
+test("without permission settings every call that is not a plain read asks", async () => {
+	// Arrange
+	const SAK_CONFIG_DIR = await configDirWith();
+
+	// Act
+	const { permissions } = await loadConfig({ SAK_CONFIG_DIR });
+
+	// Assert
+	assert.deepEqual(permissions, { mode: "ask", allow: [], ask: [], deny: [] });
 });

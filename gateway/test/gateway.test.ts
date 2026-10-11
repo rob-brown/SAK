@@ -3,64 +3,11 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
+import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
 import { collapseSystemMessages } from "@earendil-works/pi-ai/utils/transcript";
-import { MemoryStorage } from "@earendil-works/pi-durable/storage/memory";
-import { Gateway } from "../src/gateway.ts";
-import { openHarness } from "../src/open.ts";
+import type { Gateway } from "../src/gateway.ts";
 import type { Command, Outgoing } from "../src/protocol.ts";
-
-async function setup() {
-	const faux = fauxProvider();
-	const models = createModels();
-	models.setProvider(faux.provider);
-	const storage = new MemoryStorage();
-	const personasDir = await mkdtemp(join(tmpdir(), "sak-personas-"));
-	const configDir = await mkdtemp(join(tmpdir(), "sak-config-"));
-	const harness = await openHarness(storage, models, { configDir });
-	const outgoing: Outgoing[] = [];
-	const ensured: string[] = [];
-	const model = faux.getModel();
-	const gateway = new Gateway({
-		cwd: process.cwd(),
-		personasDir,
-		ensureModel: async (modelId) => {
-			ensured.push(modelId);
-		},
-		harness,
-		listModels: async () => ["alpha", "beta"],
-		model: { provider: model.provider, modelId: model.id },
-		send: (message) => outgoing.push(message),
-		storage,
-	});
-	const close = async () => {
-		await gateway.close();
-		await harness.close(BACKGROUND_CONTEXT);
-	};
-	return { close, configDir, ensured, faux, gateway, outgoing, personasDir };
-}
-
-async function waitFor(condition: () => boolean) {
-	const deadline = Date.now() + 5000;
-	while (!condition()) {
-		if (Date.now() > deadline) throw new Error("timed out");
-		await new Promise((resolve) => setTimeout(resolve, 10));
-	}
-}
-
-function reply(outgoing: Outgoing[], id: string) {
-	return outgoing.find((message) => message.type === "reply" && message.id === id);
-}
-
-function hasEvent(outgoing: Outgoing[], type: string) {
-	return outgoing.some(
-		(message) =>
-			message.type === "events" &&
-			(message.events as { type: string }[]).some((event) => event.type === type),
-	);
-}
+import { hasEvent, reply, setup, waitFor } from "./support.ts";
 
 test("create_conversation then list_conversations returns the new conversation", async () => {
 	// Arrange

@@ -11,6 +11,8 @@ import {
 import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
 import { CodingTools } from "@earendil-works/pi-durable/tools";
 import { CodemodeExtension } from "./codemode.ts";
+import type { Authorizer } from "./permissions/authorizer.ts";
+import { permissionsExtension } from "./permissions/extension.ts";
 import { discoverInstructions, renderInstructions } from "./project-instructions.ts";
 import { discoverSkills, renderSkills } from "./skills.ts";
 
@@ -19,6 +21,7 @@ function frozenSection(key: string, render: (input: PromptInput) => Promise<stri
 }
 
 export type OpenOptions = {
+	readonly authorizer?: Authorizer;
 	readonly configDir: string;
 	readonly instructionMaxChars?: number;
 };
@@ -47,6 +50,7 @@ export async function openHarness(storage: Storage, models: Models, options: Ope
 	registry.install(CodingTools);
 	registry.install(CodemodeExtension);
 	registry.install(environment(options));
+	if (options.authorizer) registry.install(permissionsExtension(options.authorizer));
 	const harness = await Harness.open(
 		storage,
 		{ models, registry, env: ({ cwd }) => new NodeExecutionEnv({ cwd: cwd ?? process.cwd() }) },
