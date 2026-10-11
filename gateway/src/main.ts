@@ -8,10 +8,14 @@ import { ModelCatalog, PROVIDER_ID } from "./models.ts";
 import { openHarness } from "./open.ts";
 import type { Command, Outgoing } from "./protocol.ts";
 
-const config = loadConfig(process.env);
+const config = await loadConfig(process.env).catch((error: unknown) => {
+	process.stderr.write(`sak: ${error instanceof Error ? error.message : String(error)}\n`);
+	return process.exit(2);
+});
+for (const warning of config.warnings) process.stderr.write(`sak: ${warning}\n`);
 const storage = await openNodeSqliteStorage(config.dbPath);
 const catalog = new ModelCatalog(config);
-const harness = await openHarness(storage, catalog.models, config.configDir);
+const harness = await openHarness(storage, catalog.models, config);
 
 const send = (message: Outgoing) => {
 	process.stdout.write(`${JSON.stringify(message)}\n`);

@@ -9,9 +9,13 @@ export type InstructionFile = {
 	readonly text: string;
 };
 
-export async function discoverInstructions(cwd: string, configDir: string): Promise<InstructionFile[]> {
+export async function discoverInstructions(
+	cwd: string,
+	configDir: string,
+	maxChars: number = MAX_FILE_CHARS,
+): Promise<InstructionFile[]> {
 	const directories = [configDir, ...(await directoriesFromRoot(cwd))];
-	const found = await Promise.all(directories.map(readInstructionFile));
+	const found = await Promise.all(directories.map((directory) => readInstructionFile(directory, maxChars)));
 	return found.flatMap((file) => (file ? [file] : []));
 }
 
@@ -34,11 +38,11 @@ export async function directoriesFromRoot(cwd: string): Promise<string[]> {
 	}
 }
 
-async function readInstructionFile(directory: string): Promise<InstructionFile | undefined> {
+async function readInstructionFile(directory: string, maxChars: number): Promise<InstructionFile | undefined> {
 	for (const name of FILE_NAMES) {
 		const path = join(directory, name);
 		const text = await readText(path);
-		if (text !== undefined) return { path, text: clip(text.trim()) };
+		if (text !== undefined) return { path, text: clip(text.trim(), maxChars) };
 	}
 	return undefined;
 }
@@ -61,7 +65,7 @@ async function exists(path: string): Promise<boolean> {
 	}
 }
 
-function clip(text: string): string {
-	if (text.length <= MAX_FILE_CHARS) return text;
-	return `${text.slice(0, MAX_FILE_CHARS)}\n… truncated (${text.length - MAX_FILE_CHARS} more characters)`;
+function clip(text: string, maxChars: number): string {
+	if (text.length <= maxChars) return text;
+	return `${text.slice(0, maxChars)}\n… truncated (${text.length - maxChars} more characters)`;
 }

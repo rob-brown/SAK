@@ -77,6 +77,18 @@ test("a file over the limit is truncated with a marker", async () => {
 	assert.match(file?.text ?? "", /… truncated \(5 more characters\)$/);
 });
 
+test("a configured limit replaces the default when truncating", async () => {
+	// Arrange
+	const { configDir, root } = await repo();
+	await writeFile(join(root, "AGENTS.md"), "abcdefghij");
+
+	// Act
+	const [file] = await discoverInstructions(root, configDir, 4);
+
+	// Assert
+	assert.match(file?.text ?? "", /^abcd\n… truncated \(6 more characters\)$/);
+});
+
 test("rendering wraps every file with its path inside one project_instructions tag", () => {
 	// Arrange
 	const files = [{ path: "/a/AGENTS.md", text: "alpha" }];

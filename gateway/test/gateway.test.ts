@@ -19,7 +19,7 @@ async function setup() {
 	const storage = new MemoryStorage();
 	const personasDir = await mkdtemp(join(tmpdir(), "sak-personas-"));
 	const configDir = await mkdtemp(join(tmpdir(), "sak-config-"));
-	const harness = await openHarness(storage, models, configDir);
+	const harness = await openHarness(storage, models, { configDir });
 	const outgoing: Outgoing[] = [];
 	const ensured: string[] = [];
 	const model = faux.getModel();
