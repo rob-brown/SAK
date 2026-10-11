@@ -26,15 +26,30 @@ defmodule Sak.EntryRows do
         number: number,
         id: record["id"],
         label: label(record["kind"]),
-        text: record |> messages() |> Enum.map_join(" ", &summary/1) |> one_line(),
+        text: record |> row_text() |> one_line(),
         record: record
       }
     end)
   end
 
   @spec detail(map()) :: String.t()
+  def detail(%{"kind" => "sak.judge", "data" => data}) do
+    Jason.encode!(data, pretty: true)
+  end
+
   def detail(record) do
     Jason.encode!(messages(record), pretty: true)
+  end
+
+  defp row_text(%{"kind" => "sak.judge", "data" => data}) do
+    percent =
+      if is_number(data["probability"]), do: " (#{round(data["probability"] * 100)}%)", else: ""
+
+    "#{data["purpose"]}: #{data["outcome"]}#{percent} · #{data["model"]}, #{data["ms"]} ms"
+  end
+
+  defp row_text(record) do
+    record |> messages() |> Enum.map_join(" ", &summary/1)
   end
 
   defp messages(record) do
@@ -45,6 +60,7 @@ defmodule Sak.EntryRows do
   defp label("pi.assistant"), do: "assistant"
   defp label("pi.tool-result"), do: "tool"
   defp label("pi.system"), do: "system"
+  defp label("sak.judge"), do: "judge"
   defp label("pi." <> other), do: other
   defp label(other) when is_binary(other), do: other
   defp label(_kind), do: "entry"

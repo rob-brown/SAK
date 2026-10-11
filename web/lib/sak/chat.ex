@@ -178,8 +178,25 @@ defmodule Sak.Chat do
     |> Enum.flat_map(fn {message, index} -> message_item(message, "entry-#{id}-#{index}") end)
   end
 
+  defp entry_items(%{"kind" => "sak.judge", "data" => %{"purpose" => "skill suggestion"}}) do
+    []
+  end
+
+  defp entry_items(%{"kind" => "sak.judge", "data" => %{"acted" => true} = data, "id" => id}) do
+    [%{id: "entry-#{id}", role: :system, blocks: [%{type: :context, text: judge_line(data)}]}]
+  end
+
   defp entry_items(_entry) do
     []
+  end
+
+  defp judge_line(data) do
+    percent =
+      if is_number(data["probability"]),
+        do: " (#{round(data["probability"] * 100)}% sure)",
+        else: ""
+
+    "Judge, #{data["purpose"]}: #{data["outcome"]}#{percent}"
   end
 
   defp message_item(%{"role" => "user", "content" => content}, id) when is_binary(content) do

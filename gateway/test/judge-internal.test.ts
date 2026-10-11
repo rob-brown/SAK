@@ -215,6 +215,96 @@ test("no request is made when there are no skills, or the persona cannot read fi
 	await server.close();
 });
 
+type Note = { purpose: string; outcome: string; acted: boolean; model: string; probability: number | null; detail: string | null };
+
+async function notesOf(harness: Harness): Promise<Note[]> {
+	const { conversationId } = (reply(harness.outgoing, "c") as { result: { conversationId: number } }).result;
+	await harness.gateway.handle({ id: `again-${Math.random()}`, type: "attach", conversationId });
+	const snapshot = harness.outgoing.filter((message) => message.type === "snapshot").pop() as {
+		snapshot: { entries: { kind: string; data?: Note; model?: unknown }[] };
+	};
+	return snapshot.snapshot.entries.filter((entry) => entry.kind === "sak.judge").map((entry) => entry.data as Note);
+}
+
+test("every skill check that reaches the judge leaves a note in the history, and the model never sees it", async () => {
+	// Arrange
+	const answers = [["pdf", 0.93], ["none", 0.97]] as const;
+	const server = await fakeServer((_seen, count) => ({ status: 200, body: choiceAnswers({ skill: [...(answers[count - 1] as readonly [string, number])] }) }));
+	const harness = await setup(undefined, undefined, client(server.url), { suggestSkills: true });
+	const cwd = await project();
+	const requests: string[] = [];
+	harness.faux.setResponses([
+		(context: { messages: Message[] }) => {
+			requests.push(JSON.stringify(context.messages));
+			return fauxAssistantMessage("first");
+		},
+		(context: { messages: Message[] }) => {
+			requests.push(JSON.stringify(context.messages));
+			return fauxAssistantMessage("second");
+		},
+	]);
+	await harness.gateway.handle({ id: "c", type: "create_conversation", cwd });
+	const { conversationId } = (reply(harness.outgoing, "c") as { result: { conversationId: number } }).result;
+	await harness.gateway.handle({ id: "a", type: "attach", conversationId });
+
+	// Act
+	await harness.gateway.handle({ id: "s1", type: "submit", conversationId, content: REQUEST });
+	await waitFor(() => requests.length === 1);
+	await waitFor(() => harness.outgoing.filter((m) => JSON.stringify(m).includes("run_end")).length >= 1);
+	await harness.gateway.handle({ id: "s2", type: "submit", conversationId, content: "tell me about the weather today" });
+	await waitFor(() => requests.length === 2);
+	const notes = await notesOf(harness);
+
+	// Assert
+	assert.deepEqual(notes.map((note) => [note.purpose, note.outcome, note.acted]), [
+		["skill suggestion", "suggested pdf", true],
+		["skill suggestion", "no skill fits", false],
+	]);
+	assert.equal(notes[0]?.model, "winnow:e4b");
+	assert.equal(notes[0]?.probability, 0.93);
+	assert.doesNotMatch(requests.join(""), /sak\.judge|suggested pdf|no skill fits/);
+	await harness.close();
+	await server.close();
+});
+
+test("a judge that is down is noted as unavailable, and a message that never reaches the judge leaves no note", async () => {
+	// Arrange
+	const server = await fakeServer(() => ({ status: 503, body: "down" }));
+	const harness = await setup(undefined, undefined, client(server.url), { suggestSkills: true });
+
+	// Act
+	await submitted(harness, await project(), REQUEST);
+	const down = await notesOf(harness);
+	const quiet = await setup(undefined, undefined, client(server.url), { suggestSkills: true });
+	await submitted(quiet, await project(), "hi");
+	const none = await notesOf(quiet);
+
+	// Assert
+	assert.deepEqual(down.map((note) => [note.outcome, note.acted]), [["judge unavailable", false]]);
+	assert.deepEqual(none, []);
+	await harness.close();
+	await quiet.close();
+	await server.close();
+});
+
+test("a persona pick is noted on the conversation that made the agent call", async () => {
+	// Arrange
+	const server = await fakeServer(picks);
+	const harness = await setup(undefined, 6, client(server.url), { pickPersonas: true });
+	await withReader(harness);
+
+	// Act
+	await delegate(harness, { prompts: ["summarise the docs", "fix the parser bug"] });
+	const notes = await notesOf(harness);
+
+	// Assert
+	assert.equal(notes.length, 1);
+	assert.deepEqual([notes[0]?.purpose, notes[0]?.acted, notes[0]?.outcome], ["persona pick", true, "chose a persona for 1 of 2 prompts"]);
+	assert.match(notes[0]?.detail ?? "", /1: reader \(95%\), 2: default \(90%\)/);
+	await harness.close();
+	await server.close();
+});
+
 const live = await fetch("http://localhost:11435/v1/models", { signal: AbortSignal.timeout(500) }).then(
 	(response) => response.ok,
 	() => false,
@@ -227,12 +317,12 @@ test("winnow:e4b matches a PDF request to the pdf skill and leaves an unrelated 
 	const cwd = await project();
 
 	// Act
-	const pdf = await suggestSkill(deps, "please fill in the attached PDF tax form", cwd);
-	const unrelated = await suggestSkill(deps, "what is the capital of France, just curious", cwd);
+	const pdf = (await suggestSkill(deps, "please fill in the attached PDF tax form", cwd)).content;
+	const unrelated = (await suggestSkill(deps, "what is the capital of France, just curious", cwd)).note;
 
 	// Assert
 	assert.match(pdf ?? "", /^<skill-suggestion name="pdf"/);
-	assert.equal(unrelated, undefined);
+	assert.equal(unrelated?.acted, false);
 });
 
 async function setupShell(url: string) {

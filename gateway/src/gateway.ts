@@ -9,6 +9,7 @@ import {
 	type Storage,
 	watchEvents,
 } from "@earendil-works/pi-durable";
+import { JUDGE_KIND } from "./judge/note.ts";
 import { type SuggestionDeps, suggestSkill } from "./judge/suggest.ts";
 import { readMeta, STATES, writeMeta } from "./meta.ts";
 import type { Authorizer } from "./permissions/authorizer.ts";
@@ -227,7 +228,11 @@ export class Gateway {
 		if (suggestions === undefined) return content;
 		const agent = await conversation.agent(context);
 		if (!agent.tools.some((tool) => tool.name === "read")) return content;
-		return (await suggestSkill(suggestions, content, agent.cwd ?? this.options.cwd)) ?? content;
+		const { content: suggested, note } = await suggestSkill(suggestions, content, agent.cwd ?? this.options.cwd);
+		if (note !== undefined) {
+			await conversation.submit({ type: "write", entry: { kind: JUDGE_KIND, data: note } }, context);
+		}
+		return suggested;
 	}
 
 	private async submit(command: Extract<Command, { type: "submit" }>) {

@@ -31,6 +31,10 @@ export class JudgeClient {
 		this.settings = settings;
 	}
 
+	get model(): string {
+		return this.settings.model;
+	}
+
 	async evaluate(
 		state: unknown,
 		questions: Readonly<Record<string, JudgeQuestion>>,

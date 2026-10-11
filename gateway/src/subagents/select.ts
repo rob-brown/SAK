@@ -1,5 +1,6 @@
 import type { ToolExecutionApi } from "@earendil-works/pi-durable";
 import { type Choice, type InternalJudge, pickMany } from "../judge/internal.ts";
+import { noteFor, recordFromTool } from "../judge/note.ts";
 import { DEFAULT_PERSONA_NAME, loadPersonas, type Persona } from "../personas.ts";
 
 type Context = Parameters<ToolExecutionApi["agent"]>[0];
@@ -34,7 +35,25 @@ async function chosenNames(
 ): Promise<string[]> {
 	const names = await Promise.all(keys.map((key) => api.memo<string>(`persona:${key}`, context)));
 	const open = names.flatMap((name, index) => (name === undefined ? [index] : []));
-	const picked = await judgeBatches(open, prompts, judge, available, fallback.name);
+	const started = Date.now();
+	const { picked, failed } = await judgeBatches(open, prompts, judge, available, fallback.name);
+	if (open.length > 0) {
+		const chosen = [...picked].filter(([, choice]) => choice.name !== fallback.name);
+		const summary = [...picked]
+			.map(([index, choice]) => `${index + 1}: ${choice.name} (${Math.round(choice.confidence * 100)}%)`)
+			.join(", ");
+		const outcome = failed
+			? "judge unavailable, kept the default persona"
+			: chosen.length > 0
+				? `chose a persona for ${chosen.length} of ${open.length} prompts`
+				: "kept the default persona";
+		const note = noteFor("persona pick", judge.client.model, started, {
+			acted: chosen.length > 0,
+			outcome,
+			detail: summary,
+		});
+		await recordFromTool(api, context, note);
+	}
 	for (const [index, choice] of picked) {
 		const stored = await api.memo<string>(`persona:${keys[index]}`, choice.name, context);
 		names[index] = stored;
@@ -54,8 +73,9 @@ async function judgeBatches(
 	judge: InternalJudge,
 	available: readonly Persona[],
 	fallback: string,
-): Promise<Map<number, { name: string; confidence: number }>> {
+): Promise<{ picked: Map<number, { name: string; confidence: number }>; failed: boolean }> {
 	const picked = new Map<number, { name: string; confidence: number }>();
+	let failed = false;
 	const options: Record<string, string> = Object.fromEntries(
 		available.map((persona) => [persona.name, persona.description || persona.name]),
 	);
@@ -70,20 +90,21 @@ async function judgeBatches(
 				},
 			]),
 		);
-		const answers = await askJudge(judge, { tasks: slice.map((index) => prompts[index]) }, choices);
+		const { answers, unavailable } = await askJudge(judge, { tasks: slice.map((index) => prompts[index]) }, choices);
+		failed ||= unavailable;
 		slice.forEach((index, position) => {
 			const answer = answers[`t${position}`];
 			const confident = answer !== undefined && answer.probability >= judge.minConfidence;
 			picked.set(index, { name: confident ? answer.choice : fallback, confidence: answer?.probability ?? 0 });
 		});
 	}
-	return picked;
+	return { picked, failed };
 }
 
 async function askJudge(judge: InternalJudge, state: unknown, choices: Record<string, Choice>) {
 	try {
-		return await pickMany(judge.client, state, choices);
+		return { answers: await pickMany(judge.client, state, choices), unavailable: false };
 	} catch {
-		return {};
+		return { answers: {} as Record<string, undefined>, unavailable: true };
 	}
 }

@@ -106,4 +106,29 @@ defmodule Sak.EntryRowsTest do
     assert detail =~ "\"role\": \"user\""
     assert detail =~ "\n"
   end
+
+  test "a judge note gets its own label, a one-line summary and its data as the detail" do
+    # Arrange
+    data = %{
+      "purpose" => "persona pick",
+      "outcome" => "chose a persona for 1 of 2 prompts",
+      "model" => "winnow:e4b",
+      "ms" => 180,
+      "probability" => 0.95,
+      "acted" => true
+    }
+
+    record = %{"kind" => "sak.judge", "id" => 9, "data" => data}
+
+    # Act
+    [row] = EntryRows.rows([record])
+
+    # Assert
+    assert row.label == "judge"
+
+    assert row.text ==
+             "persona pick: chose a persona for 1 of 2 prompts (95%) · winnow:e4b, 180 ms"
+
+    assert EntryRows.detail(record) =~ "\"purpose\": \"persona pick\""
+  end
 end

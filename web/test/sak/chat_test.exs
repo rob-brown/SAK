@@ -132,6 +132,41 @@ defmodule Sak.ChatTest do
       assert hint == "Suggested skill: `pdf` (93% sure)"
     end
 
+    test "a judge note shows in the chat only when it changed something other than a skill suggestion" do
+      # Arrange
+      note = fn id, purpose, acted ->
+        %{
+          "kind" => "sak.judge",
+          "id" => id,
+          "data" => %{
+            "purpose" => purpose,
+            "outcome" => "chose a persona for 1 of 2 prompts",
+            "acted" => acted,
+            "probability" => 0.95
+          }
+        }
+      end
+
+      entries = [
+        note.(1, "persona pick", true),
+        note.(2, "persona pick", false),
+        note.(3, "skill suggestion", true),
+        note.(4, "permission", true)
+      ]
+
+      # Act
+      chat = Chat.from_snapshot(%{"entries" => entries})
+
+      # Assert
+      assert [
+               %{role: :system, blocks: [%{type: :context, text: first}]},
+               %{role: :system, blocks: [%{type: :context, text: second}]}
+             ] = Chat.items(chat)
+
+      assert first == "Judge, persona pick: chose a persona for 1 of 2 prompts (95% sure)"
+      assert second =~ "Judge, permission:"
+    end
+
     test "restores the in-flight assistant message from the generation field" do
       # Arrange
       snapshot = %{
