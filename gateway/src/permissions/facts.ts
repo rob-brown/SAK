@@ -6,6 +6,7 @@ import { parseCommand } from "./command.ts";
 
 const run = promisify(execFile);
 const GIT_TIMEOUT_MS = 3000;
+const EXPANDED_BY_SHELL = /^~|[$*?[\]{}`]/;
 
 export type Facts = {
 	readonly lines: readonly string[];
@@ -17,10 +18,16 @@ type Tracking = "ignored" | "not a repository" | "tracked clean" | "tracked dirt
 export async function gatherFacts(command: string, cwd: string): Promise<Facts> {
 	const parsed = parseCommand(command);
 	const removals = parsed.segments.filter(isRemoval);
-	const targets = removals.flatMap(targetsOf).map((target) => resolve(cwd, target));
+	const words = removals.flatMap(targetsOf);
+	const targets = words.map((word) => resolve(cwd, word));
 	const lines = [await repositoryState(cwd)];
 	const states: Tracking[] = [];
-	for (const target of targets) {
+	for (const [index, target] of targets.entries()) {
+		if (EXPANDED_BY_SHELL.test(words[index] as string)) {
+			states.push("untracked");
+			lines.push(`${words[index]} is expanded by the shell, so it can name files anywhere, including outside the project`);
+			continue;
+		}
 		const state = await trackingOf(target, cwd);
 		states.push(state);
 		lines.push(await describe(target, cwd, state));

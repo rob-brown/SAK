@@ -71,6 +71,23 @@ test("the exemption needs every part to be a removal of ignored files and never 
 	assert.equal(plain.lines.length, 1);
 });
 
+test("a target the shell expands is reported as able to name files anywhere and is never exempt", async () => {
+	// Arrange
+	const directory = await repo();
+
+	// Act
+	const home = await gatherFacts("rm -rf ~/", directory);
+	const variable = await gatherFacts("rm -rf $HOME", directory);
+	const glob = await gatherFacts("rm -rf build*", directory);
+
+	// Assert
+	for (const facts of [home, variable, glob]) {
+		assert.equal(facts.onlyIgnoredTargets, false);
+		assert.match(facts.lines.join("\n"), /is expanded by the shell, so it can name files anywhere/);
+		assert.doesNotMatch(facts.lines.join("\n"), /does not exist/);
+	}
+});
+
 test("outside a repository the facts say so and nothing is exempt", async () => {
 	// Arrange
 	const directory = await mkdtemp(join(tmpdir(), "sak-nogit-"));
