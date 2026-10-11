@@ -1,5 +1,7 @@
 #!/bin/sh
 
+"$(dirname "$0")/../../scripts/check-gateways" || exit 1
+
 ollaya serve &
 
 mix assets.deploy

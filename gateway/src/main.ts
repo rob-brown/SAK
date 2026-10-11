@@ -4,9 +4,11 @@ import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite
 import { listEndpointModels } from "./endpoint.ts";
 import { loadConfig } from "./config.ts";
 import { Gateway } from "./gateway.ts";
+import { acquireInstanceLock } from "./instance-lock.ts";
 import { ModelCatalog, PROVIDER_ID } from "./models.ts";
 import { JudgeClient } from "./judge/client.ts";
 import { openHarness } from "./open.ts";
+import { watchParent } from "./parent-watchdog.ts";
 import { Authorizer } from "./permissions/authorizer.ts";
 import { PermissionBroker } from "./permissions/broker.ts";
 import { PermissionJudge } from "./permissions/judge.ts";
@@ -15,11 +17,18 @@ import { rootConversation } from "./permissions/root.ts";
 import type { Command, Outgoing } from "./protocol.ts";
 import { Semaphore } from "./subagents/semaphore.ts";
 
+const LOCK_WAIT_MS = 15_000;
+
 const config = await loadConfig(process.env).catch((error: unknown) => {
 	process.stderr.write(`sak: ${error instanceof Error ? error.message : String(error)}\n`);
 	return process.exit(2);
 });
 for (const warning of config.warnings) process.stderr.write(`sak: ${warning}\n`);
+watchParent();
+await acquireInstanceLock(config.dbPath, LOCK_WAIT_MS).catch((error: unknown) => {
+	process.stderr.write(`sak: ${error instanceof Error ? error.message : String(error)}\n`);
+	return process.exit(3);
+});
 const storage = await openNodeSqliteStorage(config.dbPath);
 const catalog = new ModelCatalog(config);
 

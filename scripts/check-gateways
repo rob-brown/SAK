@@ -1,0 +1,10 @@
+#!/bin/sh
+
+running=$(pgrep -fl "node src/main.ts")
+
+if [ -n "$running" ]; then
+  echo "A gateway is already running. Two gateways on one database corrupt it:" >&2
+  echo "$running" >&2
+  echo "Stop them (kill <pid>) and run this again." >&2
+  exit 1
+fi

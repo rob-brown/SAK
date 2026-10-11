@@ -1,5 +1,6 @@
 node_modules/
 *.sqlite
+*.sqlite-lock
 *.sqlite-shm
 *.sqlite-wal
 *.jsonl
