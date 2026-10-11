@@ -142,9 +142,9 @@ defmodule Sak.ToolFormatTest do
     assert AgentFormat.result("unknown persona ghost") == nil
   end
 
-  test "only the first three prompts are shown, each cut to 400 characters, and both cuts are said" do
+  test "only the first three prompts are shown, each cut to 2000 characters, and both cuts are said" do
     # Arrange
-    long = String.duplicate("a", 450)
+    long = String.duplicate("a", 2_050)
     arguments = %{"prompts" => [long, "two", "three", "four", "five"]}
 
     # Act
@@ -152,7 +152,7 @@ defmodule Sak.ToolFormatTest do
 
     # Assert
     assert text =~ "agent · 5 subagents\n\n"
-    assert text =~ "> #{String.duplicate("a", 400)}\n>\n> … 50 more characters"
+    assert text =~ "> #{String.duplicate("a", 2_000)}\n>\n> … 50 more characters"
     assert text =~ "**3.**\n\n> three"
     refute text =~ "four"
     assert String.ends_with?(text, "_… 2 more prompts not shown_")

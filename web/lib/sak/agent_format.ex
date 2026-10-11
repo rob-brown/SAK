@@ -6,7 +6,7 @@ defmodule Sak.AgentFormat do
   """
 
   @max_items 3
-  @prompt_chars 400
+  @prompt_chars 2_000
   @answer_chars 2_000
 
   @spec call(term()) :: String.t() | nil
