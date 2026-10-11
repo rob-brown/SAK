@@ -20,6 +20,7 @@ const CLAUDE_MODEL_ALIASES = new Set(["sonnet", "opus", "haiku", "inherit"]);
 
 const TOOL_ALIASES: Readonly<Record<string, string>> = {
 	agent: "agent",
+	judge: "judge",
 	task: "agent",
 	read: "read",
 	write: "write",

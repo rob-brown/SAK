@@ -5,6 +5,7 @@ import { listEndpointModels } from "./endpoint.ts";
 import { loadConfig } from "./config.ts";
 import { Gateway } from "./gateway.ts";
 import { ModelCatalog, PROVIDER_ID } from "./models.ts";
+import { JudgeClient } from "./judge/client.ts";
 import { openHarness } from "./open.ts";
 import { Authorizer } from "./permissions/authorizer.ts";
 import { PermissionBroker } from "./permissions/broker.ts";
@@ -30,6 +31,7 @@ const harness = await openHarness(storage, catalog.models, {
 	authorizer,
 	configDir: config.configDir,
 	instructionMaxChars: config.instructionMaxChars,
+	...(config.judge.enabled ? { judge: new JudgeClient(config.judge) } : {}),
 	subagents: { personasDir: config.personasDir, semaphore: new Semaphore(config.subagentLimit) },
 });
 

@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parse } from "smol-toml";
+import type { JudgeSettings } from "./judge/client.ts";
 import { type Mode, MODES, parseRule, type Policy } from "./permissions/rules.ts";
 import { MAX_FILE_CHARS } from "./project-instructions.ts";
 
@@ -14,6 +15,7 @@ export type Config = {
 	readonly cwd: string;
 	readonly dbPath: string;
 	readonly instructionMaxChars: number;
+	readonly judge: JudgeSettings & { readonly enabled: boolean };
 	readonly modelId: string;
 	readonly permissions: Policy;
 	readonly personasDir: string;
@@ -21,19 +23,23 @@ export type Config = {
 	readonly warnings: readonly string[];
 };
 
-type Kind = "count" | "list" | "mode" | "text";
-type Value = number | string | string[];
+type Kind = "count" | "flag" | "list" | "mode" | "text";
+type Value = boolean | number | string | string[];
 type Values = ReadonlyMap<string, Value>;
 
 const SCHEMA: Readonly<Record<string, Readonly<Record<string, Kind>>>> = {
 	endpoint: { base_url: "text", model: "text" },
 	instructions: { max_file_chars: "count" },
+	judge: { base_url: "text", enabled: "flag", model: "text", timeout_ms: "count" },
 	permissions: { allow: "list", ask: "list", deny: "list", mode: "mode" },
 	storage: { db: "text" },
 	subagents: { max_concurrent: "count" },
 };
 
 export const DEFAULT_SUBAGENT_LIMIT = 6;
+export const DEFAULT_JUDGE_URL = "http://localhost:11435";
+export const DEFAULT_JUDGE_MODEL = "winnow:e4b";
+export const DEFAULT_JUDGE_TIMEOUT_MS = 30_000;
 
 export async function loadConfig(env: NodeJS.ProcessEnv): Promise<Config> {
 	const configDir = env.SAK_CONFIG_DIR ?? join(env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "sak");
@@ -46,6 +52,13 @@ export async function loadConfig(env: NodeJS.ProcessEnv): Promise<Config> {
 		cwd: env.SAK_CWD ?? process.cwd(),
 		dbPath: env.SAK_DB ?? text(values, "storage.db") ?? "./sak.sqlite",
 		instructionMaxChars: count(values, "instructions.max_file_chars") ?? MAX_FILE_CHARS,
+		judge: {
+			enabled: flag(values, "judge.enabled") ?? false,
+			baseUrl: env.SAK_JUDGE_URL ?? text(values, "judge.base_url") ?? DEFAULT_JUDGE_URL,
+			model: env.SAK_JUDGE_MODEL ?? text(values, "judge.model") ?? DEFAULT_JUDGE_MODEL,
+			timeoutMs: count(values, "judge.timeout_ms") ?? DEFAULT_JUDGE_TIMEOUT_MS,
+			...(env.SAK_JUDGE_API_KEY ? { apiKey: env.SAK_JUDGE_API_KEY } : {}),
+		},
 		modelId: env.SAK_MODEL ?? text(values, "endpoint.model") ?? "ornith-1.5-35b-a3b",
 		permissions: policyFrom(path, values),
 		personasDir: join(configDir, "personas"),
@@ -110,6 +123,7 @@ async function readSettings(path: string) {
 }
 
 function matches(kind: Kind, value: unknown): boolean {
+	if (kind === "flag") return typeof value === "boolean";
 	if (kind === "text") return typeof value === "string" && value.trim() !== "";
 	if (kind === "mode") return (MODES as readonly unknown[]).includes(value);
 	if (kind === "list") return Array.isArray(value) && value.every((item) => typeof item === "string" && item.trim() !== "");
@@ -117,10 +131,16 @@ function matches(kind: Kind, value: unknown): boolean {
 }
 
 function describeKind(kind: Kind): string {
+	if (kind === "flag") return "true or false";
 	if (kind === "text") return "a non-empty string";
 	if (kind === "mode") return `one of ${MODES.join(", ")}`;
 	if (kind === "list") return "a list of non-empty strings";
 	return "a positive integer";
+}
+
+function flag(values: Values, key: string): boolean | undefined {
+	const value = values.get(key);
+	return typeof value === "boolean" ? value : undefined;
 }
 
 function list(values: Values, key: string): string[] | undefined {

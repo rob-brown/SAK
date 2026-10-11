@@ -113,6 +113,47 @@ test("the subagent limit defaults to six and can be set in the file", async () =
 	assert.equal(custom.subagentLimit, 3);
 });
 
+test("the judge is off by default, targets a local ollaya server, and the key comes only from the environment", async () => {
+	// Arrange
+	const bare = await configDirWith();
+	const filed = await configDirWith(
+		'[judge]\nenabled = true\nbase_url = "https://api.typesafe.ai"\nmodel = "jev-latest"\ntimeout_ms = 5000\napi_key = "nope"\n',
+	);
+
+	// Act
+	const defaults = await loadConfig({ SAK_CONFIG_DIR: bare });
+	const fromFile = await loadConfig({ SAK_CONFIG_DIR: filed, SAK_JUDGE_API_KEY: "from-env" });
+	const overridden = await loadConfig({ SAK_CONFIG_DIR: filed, SAK_JUDGE_URL: "http://other:1", SAK_JUDGE_MODEL: "m" });
+
+	// Assert
+	assert.deepEqual(defaults.judge, {
+		enabled: false,
+		baseUrl: "http://localhost:11435",
+		model: "winnow:e4b",
+		timeoutMs: 30_000,
+	});
+	assert.deepEqual(fromFile.judge, {
+		enabled: true,
+		baseUrl: "https://api.typesafe.ai",
+		model: "jev-latest",
+		timeoutMs: 5000,
+		apiKey: "from-env",
+	});
+	assert.match(fromFile.warnings.join("\n"), /unknown key judge\.api_key/);
+	assert.deepEqual([overridden.judge.baseUrl, overridden.judge.model, overridden.judge.apiKey], ["http://other:1", "m", undefined]);
+});
+
+test("a judge flag that is not true or false stops the load", async () => {
+	// Arrange
+	const SAK_CONFIG_DIR = await configDirWith('[judge]\nenabled = "yes"\n');
+
+	// Act
+	const result = await loadConfig({ SAK_CONFIG_DIR }).catch((error: Error) => error);
+
+	// Assert
+	assert.match(String(result), /judge\.enabled must be true or false/);
+});
+
 test("without permission settings every call that is not a plain read asks", async () => {
 	// Arrange
 	const SAK_CONFIG_DIR = await configDirWith();

@@ -11,6 +11,8 @@ import {
 import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
 import { CodingTools } from "@earendil-works/pi-durable/tools";
 import { CodemodeExtension } from "./codemode.ts";
+import type { JudgeClient } from "./judge/client.ts";
+import { judgeExtension } from "./judge/tool.ts";
 import type { Authorizer } from "./permissions/authorizer.ts";
 import { permissionsExtension } from "./permissions/extension.ts";
 import { discoverInstructions, renderInstructions } from "./project-instructions.ts";
@@ -25,6 +27,7 @@ export type OpenOptions = {
 	readonly authorizer?: Authorizer;
 	readonly configDir: string;
 	readonly instructionMaxChars?: number;
+	readonly judge?: JudgeClient;
 	readonly subagents?: SubagentDeps;
 };
 
@@ -53,6 +56,7 @@ export async function openHarness(storage: Storage, models: Models, options: Ope
 	registry.install(CodemodeExtension);
 	registry.install(environment(options));
 	if (options.subagents) registry.install(subagentExtension(options.subagents));
+	if (options.judge) registry.install(judgeExtension(options.judge));
 	if (options.authorizer) registry.install(permissionsExtension(options.authorizer));
 	const harness = await Harness.open(
 		storage,

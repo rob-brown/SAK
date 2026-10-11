@@ -1,11 +1,17 @@
 import type { ToolRegistration } from "@earendil-works/pi-durable";
 import { CodingTools } from "@earendil-works/pi-durable/tools";
 import { Codemode } from "./codemode.ts";
+import { JudgeCatalogEntry } from "./judge/catalog.ts";
 import { AgentCatalogEntry } from "./subagents/catalog.ts";
 
 export const CODEMODE = "codemode";
 
-const CATALOG: readonly ToolRegistration[] = [...(CodingTools.tools ?? []), Codemode, AgentCatalogEntry];
+const CATALOG: readonly ToolRegistration[] = [
+	...(CodingTools.tools ?? []),
+	Codemode,
+	AgentCatalogEntry,
+	JudgeCatalogEntry,
+];
 
 export const TOOL_NAMES: readonly string[] = CATALOG.map((tool) => tool.name);
 

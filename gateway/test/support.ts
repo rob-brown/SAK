@@ -6,6 +6,7 @@ import { createModels } from "@earendil-works/pi-ai/models";
 import { fauxProvider } from "@earendil-works/pi-ai/providers/faux";
 import { MemoryStorage } from "@earendil-works/pi-durable/storage/memory";
 import { Gateway } from "../src/gateway.ts";
+import type { JudgeClient } from "../src/judge/client.ts";
 import { openHarness } from "../src/open.ts";
 import { Authorizer } from "../src/permissions/authorizer.ts";
 import { PermissionBroker } from "../src/permissions/broker.ts";
@@ -14,7 +15,7 @@ import type { Policy } from "../src/permissions/rules.ts";
 import type { Outgoing } from "../src/protocol.ts";
 import { Semaphore } from "../src/subagents/semaphore.ts";
 
-export async function setup(policy?: Policy, subagentLimit?: number) {
+export async function setup(policy?: Policy, subagentLimit?: number, judge?: JudgeClient) {
 	const faux = fauxProvider();
 	const models = createModels();
 	models.setProvider(faux.provider);
@@ -30,6 +31,7 @@ export async function setup(policy?: Policy, subagentLimit?: number) {
 		configDir,
 		...(authorizer ? { authorizer } : {}),
 		...(subagents ? { subagents } : {}),
+		...(judge ? { judge } : {}),
 	});
 	const ensured: string[] = [];
 	const model = faux.getModel();
