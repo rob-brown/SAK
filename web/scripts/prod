@@ -1,3 +1,5 @@
 #!/bin/sh
 
+mix assets.deploy
+
 env PHX_HOST=localhost MIX_ENV=prod SECRET_KEY_BASE=$(mix phx.gen.secret) iex -S mix phx.server
