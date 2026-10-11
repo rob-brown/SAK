@@ -79,6 +79,42 @@ defmodule SakWeb.PermissionTest do
     refute has_element?(view, "#sak[data-command-open=true]")
   end
 
+  test "a request also closes the mode picker, the chat search and the sessions filter" do
+    # Arrange
+    Application.put_env(:sak, :fake_gateway_replies, %{
+      "list_conversations" =>
+        {:ok, %{"conversations" => [%{"id" => 1, "cwd" => "/work/alpha", "model" => "m"}]}},
+      "permission_mode" =>
+        {:ok, %{"mode" => "ask", "default" => "ask", "modes" => ["accept-edits", "ask", "auto"]}}
+    })
+
+    {:ok, picker, _html} = live(build_conn(), ~p"/c/1")
+    press(picker, ":")
+    picker |> form("#command-form", %{"query" => "permissions"}) |> render_change()
+    picker |> form("#command-form") |> render_submit()
+    {:ok, search, _html} = live(build_conn(), ~p"/c/1")
+    press(search, "/")
+    {:ok, filter, _html} = live(build_conn(), ~p"/c/1")
+    press(filter, "1")
+    press(filter, "/")
+
+    opened = [
+      has_element?(picker, "#mode-picker"),
+      has_element?(search, "#chat-search-form"),
+      has_element?(filter, "#sessions-filter-form")
+    ]
+
+    # Act
+    for view <- [picker, search, filter], do: send_request(view)
+
+    # Assert
+    assert opened == [true, true, true]
+    refute has_element?(picker, "#mode-picker")
+    refute has_element?(search, "#chat-search-form")
+    refute has_element?(filter, "#sessions-filter-form")
+    assert has_element?(filter, "#permission-dialog", "Allow bash?")
+  end
+
   test "a request from a subagent says so" do
     # Arrange
     {:ok, view, _html} = live(build_conn(), ~p"/c/1")

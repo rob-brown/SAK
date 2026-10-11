@@ -3,6 +3,11 @@ defmodule SakWeb.ChatLive.Permission do
 
   alias Phoenix.Component
   alias SakWeb.ChatLive.Command
+  alias SakWeb.ChatLive.PermissionMode
+  alias SakWeb.ChatLive.Search
+  alias SakWeb.ChatLive.Sessions
+  alias SakWeb.ChatLive.SkillForm
+  alias SakWeb.ChatLive.UsagePanel
 
   @approvals %{"y" => "allow", "a" => "allow_conversation", "n" => "deny", "escape" => "deny"}
 
@@ -14,7 +19,7 @@ defmodule SakWeb.ChatLive.Permission do
     if Enum.any?(pending, &(&1["requestId"] == request["requestId"])) do
       socket
     else
-      socket |> Command.close() |> Component.assign(permissions: pending ++ [request])
+      socket |> dismiss_overlays() |> Component.assign(permissions: pending ++ [request])
     end
   end
 
@@ -47,6 +52,16 @@ defmodule SakWeb.ChatLive.Permission do
   end
 
   def answer(socket, _approval), do: socket
+
+  defp dismiss_overlays(socket) do
+    socket
+    |> Command.close()
+    |> PermissionMode.close()
+    |> UsagePanel.close()
+    |> SkillForm.cancel()
+    |> Search.close()
+    |> Sessions.close_filter()
+  end
 
   defp client do
     Application.get_env(:sak, :gateway_client, Sak.Gateway)
