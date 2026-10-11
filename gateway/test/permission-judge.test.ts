@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
 import { JudgeClient } from "../src/judge/client.ts";
-import { PermissionJudge } from "../src/permissions/judge.ts";
+import { DEFAULT_THRESHOLD, PermissionJudge } from "../src/permissions/judge.ts";
 import { type Mode, parseRule, type Policy } from "../src/permissions/rules.ts";
 import type { Outgoing } from "../src/protocol.ts";
 import { fakeServer } from "./fake-judge.ts";
@@ -16,8 +16,12 @@ import { hasEvent, reply, setup, waitFor } from "./support.ts";
 type Harness = Awaited<ReturnType<typeof setup>>;
 type Request = Extract<Outgoing, { type: "permission_request" }>;
 
-function noul(fraction: number) {
-	return { status: 200, body: { model: "m", answers: { destructive: { type: "score", score: fraction * 3 } } } };
+function fraction(value: number) {
+	return scored(value * 3);
+}
+
+function scored(score: unknown) {
+	return { status: 200, body: { model: "m", answers: { destructive: { type: "score", score } } } };
 }
 
 function policy(mode: Mode, rules: { allow?: string[]; ask?: string[]; judge?: string[] } = {}): Policy {
@@ -42,7 +46,7 @@ async function exists(path: string) {
 }
 
 async function boot(url: string, rules: Policy, withJudge = true) {
-	const judge = withJudge ? new PermissionJudge(new JudgeClient({ baseUrl: url, model: "m", timeoutMs: 3000 }), 0.7) : undefined;
+	const judge = withJudge ? new PermissionJudge(new JudgeClient({ baseUrl: url, model: "m", timeoutMs: 3000 }), DEFAULT_THRESHOLD) : undefined;
 	return setup(rules, undefined, undefined, undefined, judge);
 }
 
@@ -80,9 +84,49 @@ async function marker() {
 	return join(await mkdtemp(join(tmpdir(), "sak-pj-")), "ran");
 }
 
+test("a score of 1.5 out of 3 or more is flagged by default, scores outside the scale are clamped", async () => {
+	// Arrange
+	const scores = [0, 1, 1.4, 1.5, 2, 3, 7, -1];
+	let next = 0;
+	const server = await fakeServer(() => scored(scores[next++]));
+	const judge = new PermissionJudge(new JudgeClient({ baseUrl: server.url, model: "m", timeoutMs: 3000 }), DEFAULT_THRESHOLD);
+
+	// Act
+	const flagged: boolean[] = [];
+	for (const _ of scores) {
+		flagged.push((await judge.assess({ name: "bash", arguments: { command: "echo hi" } }, tmpdir())).flagged);
+	}
+
+	// Assert
+	assert.deepEqual(flagged, [false, false, false, true, true, true, true, false]);
+	await server.close();
+});
+
+test("an answer without a numeric score is treated as the judge being unavailable", async () => {
+	// Arrange
+	const answers = [undefined, "3", null];
+	let next = 0;
+	const server = await fakeServer(() => scored(answers[next++]));
+	const judge = new PermissionJudge(new JudgeClient({ baseUrl: server.url, model: "m", timeoutMs: 3000 }), DEFAULT_THRESHOLD);
+
+	// Act
+	const assessed = [];
+	for (const _ of answers) {
+		assessed.push(await judge.assess({ name: "bash", arguments: { command: "echo hi" } }, tmpdir()));
+	}
+
+	// Assert
+	assert.deepEqual(assessed.map((result) => result.flagged), [true, true, true]);
+	assert.deepEqual(
+		assessed.map((result) => result.note?.outcome),
+		Array(3).fill("judge unavailable, asked a person"),
+	);
+	await server.close();
+});
+
 test("a command the judge flags as destructive goes to a person with the reason, even in auto mode", async () => {
 	// Arrange
-	const server = await fakeServer(() => noul(0.97));
+	const server = await fakeServer(() => fraction(0.97));
 	const harness = await boot(server.url, policy("auto"));
 	const file = await marker();
 
@@ -105,7 +149,7 @@ test("a command the judge flags as destructive goes to a person with the reason,
 
 test("a command the judge finds safe runs in auto mode without a prompt, and still asks in ask mode", async () => {
 	// Arrange
-	const server = await fakeServer(() => noul(0.04));
+	const server = await fakeServer(() => fraction(0.04));
 	const auto = await boot(server.url, policy("auto"));
 	const careful = await boot(server.url, policy("ask"));
 	const ran = await marker();
@@ -131,7 +175,7 @@ test("a command the judge finds safe runs in auto mode without a prompt, and sti
 
 test("ask and allow rules decide before the judge is consulted", async () => {
 	// Arrange
-	const server = await fakeServer(() => noul(0.99));
+	const server = await fakeServer(() => fraction(0.99));
 	const asking = await boot(server.url, policy("auto", { ask: ["Bash(touch *)"] }));
 	const allowing = await boot(server.url, policy("ask", { allow: ["Bash(touch *)"] }));
 	const first = await marker();
@@ -180,7 +224,7 @@ test("when the judge cannot be reached, or is not enabled, a person decides", as
 
 test("removing a git-ignored build directory runs without asking the judge, while removing tracked work is flagged", async () => {
 	// Arrange
-	const server = await fakeServer((seen) => noul(JSON.stringify(seen.body.state.facts).includes("src is tracked") ? 0.98 : 0.05));
+	const server = await fakeServer((seen) => fraction(JSON.stringify(seen.body.state.facts).includes("src is tracked") ? 0.98 : 0.05));
 	const harness = await boot(server.url, policy("auto"));
 	const other = await boot(server.url, policy("auto"));
 	const directory = await mkdtemp(join(tmpdir(), "sak-pj-repo-"));
@@ -225,7 +269,7 @@ test("cygnet flags removing uncommitted work and leaves a status check and an ig
 	const directory = await repo();
 	await writeFile(join(directory, "src", "a.ts"), "export const a = 2;\n");
 	const client = new JudgeClient({ baseUrl: "http://localhost:11435", model: "cygnet:latest", timeoutMs: 120_000 });
-	const judge = new PermissionJudge(client, 0.7);
+	const judge = new PermissionJudge(client, DEFAULT_THRESHOLD);
 	const assess = (command: string) => judge.assess({ name: "bash", arguments: { command } }, directory);
 
 	// Act

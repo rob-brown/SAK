@@ -180,7 +180,7 @@ test("judge rules, their threshold and a separate permission model come from the
 	const overridden = await loadConfig({ SAK_CONFIG_DIR: filed, SAK_JUDGE_PERMISSION_MODEL: "kev:9b" });
 
 	// Assert
-	assert.deepEqual([defaults.permissions.judge, defaults.permissionThreshold, defaults.judge.permissionModel], [[], 0.7, undefined]);
+	assert.deepEqual([defaults.permissions.judge, defaults.permissionThreshold, defaults.judge.permissionModel], [[], 0.5, undefined]);
 	assert.deepEqual(fromFile.permissions.judge, [
 		{ tool: "bash", pattern: undefined },
 		{ tool: "write", pattern: "src/**" },

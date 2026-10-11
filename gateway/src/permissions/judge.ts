@@ -3,7 +3,7 @@ import { type JudgeNote, noteFor } from "../judge/note.ts";
 import { gatherFacts } from "./facts.ts";
 import type { Call } from "./rules.ts";
 
-export const DEFAULT_THRESHOLD = 0.7;
+export const DEFAULT_THRESHOLD = 0.5;
 
 export type Assessment = {
 	readonly flagged: boolean;
@@ -53,8 +53,9 @@ export class PermissionJudge {
 			const { answers } = await this.client.evaluate(state, QUESTION, signal);
 			const score = (answers.destructive as { score?: unknown } | undefined)?.score;
 			if (typeof score !== "number") throw new Error("the judge's answer was not a score");
-			const probability = Math.round(Math.min(Math.max(score / TOP_LEVEL, 0), 1) * 10_000) / 10_000;
-			const flagged = probability >= this.threshold;
+			const fraction = Math.min(Math.max(score / TOP_LEVEL, 0), 1);
+			const probability = Math.round(fraction * 10_000) / 10_000;
+			const flagged = fraction >= this.threshold;
 			const percent = Math.round(probability * 100);
 			const note = record({
 				acted: flagged,
