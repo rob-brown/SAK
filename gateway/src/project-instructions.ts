@@ -22,7 +22,7 @@ export function renderInstructions(files: readonly InstructionFile[]): string | 
 	return `<project_instructions>\n${[preface, ...blocks].join("\n\n")}\n</project_instructions>`;
 }
 
-async function directoriesFromRoot(cwd: string): Promise<string[]> {
+export async function directoriesFromRoot(cwd: string): Promise<string[]> {
 	const chain: string[] = [];
 	let current = cwd;
 	for (;;) {

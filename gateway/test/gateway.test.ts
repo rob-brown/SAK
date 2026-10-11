@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -325,6 +325,59 @@ test("editing an instruction file mid-conversation is ignored so the request pre
 	assert.ok(first.length >= 2 && third.length > second.length);
 	assert.doesNotMatch(JSON.stringify(third), /German/);
 	await close();
+});
+
+async function skillRequests(setupResult: Awaited<ReturnType<typeof setup>>, persona?: string) {
+	const { faux, gateway, outgoing } = setupResult;
+	const project = await mkdtemp(join(tmpdir(), "sak-skill-project-"));
+	const skillDir = join(project, ".agents", "skills", "pdf");
+	await mkdir(skillDir, { recursive: true });
+	await writeFile(join(skillDir, "SKILL.md"), "---\nname: pdf\ndescription: Fill PDF forms\n---\nBody");
+	const requests: unknown[][] = [];
+	const respond = () => (context: { messages: unknown[] }) => {
+		requests.push(collapseSystemMessages({ messages: structuredClone(context.messages) } as never).messages);
+		return fauxAssistantMessage("ok");
+	};
+	faux.setResponses([respond(), respond()]);
+	await gateway.handle({ id: "1", type: "create_conversation", cwd: project, ...(persona ? { persona } : {}) });
+	const { conversationId } = (reply(outgoing, "1") as { result: { conversationId: number } }).result;
+	await gateway.handle({ id: "2", type: "attach", conversationId });
+	await gateway.handle({ id: "3", type: "submit", conversationId, content: "one" });
+	await waitFor(() => requests.length === 1);
+	await waitFor(() => hasEvent(outgoing, "run_end"));
+	await writeFile(join(skillDir, "SKILL.md"), "---\nname: pdf\ndescription: Edited later\n---\nBody");
+	await mkdir(join(project, ".agents", "skills", "late"), { recursive: true });
+	await writeFile(join(project, ".agents", "skills", "late", "SKILL.md"), "---\nname: late\ndescription: Added later\n---\n");
+	await gateway.handle({ id: "4", type: "submit", conversationId, content: "two" });
+	await waitFor(() => requests.length === 2);
+	return requests as [unknown[], unknown[]];
+}
+
+test("skills are listed in the first request and later edits or additions are ignored", async () => {
+	// Arrange
+	const harness = await setup();
+
+	// Act
+	const [first, second] = await skillRequests(harness);
+
+	// Assert
+	assert.match(JSON.stringify(first), /<skill name=\\"pdf\\"[^>]*>Fill PDF forms<\/skill>/);
+	assert.deepEqual(second.slice(0, first.length), first);
+	assert.doesNotMatch(JSON.stringify(second), /Edited later|Added later/);
+	await harness.close();
+});
+
+test("a persona without the read tool gets no skills section", async () => {
+	// Arrange
+	const harness = await setup();
+	await writeFile(join(harness.personasDir, "shell.md"), "---\nname: shell\ntools: Bash\n---\nShell only.");
+
+	// Act
+	const [first] = await skillRequests(harness, "shell");
+
+	// Assert
+	assert.doesNotMatch(JSON.stringify(first), /<skills>/);
+	await harness.close();
 });
 
 test("set_model switches one conversation and leaves the others alone", async () => {

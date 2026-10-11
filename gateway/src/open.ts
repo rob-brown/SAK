@@ -1,25 +1,36 @@
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import type { Models } from "@earendil-works/pi-ai";
-import { createRegistry, defineExtension, Harness, section, type Storage } from "@earendil-works/pi-durable";
+import {
+	createRegistry,
+	defineExtension,
+	Harness,
+	type PromptInput,
+	section,
+	type Storage,
+} from "@earendil-works/pi-durable";
 import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
 import { CodingTools } from "@earendil-works/pi-durable/tools";
 import { CodemodeExtension } from "./codemode.ts";
 import { discoverInstructions, renderInstructions } from "./project-instructions.ts";
+import { discoverSkills, renderSkills } from "./skills.ts";
+
+function frozenSection(key: string, render: (input: PromptInput) => Promise<string | undefined>) {
+	return section(key, async (input) => input.shown[key] ?? (await render(input)), { tag: false });
+}
 
 function environment(configDir: string) {
 	return defineExtension({
 		name: "environment",
 		sections: [
 			section("cwd", (input) => input.env?.cwd),
-			section(
-				"project_instructions",
-				async (input) => {
-					const loaded = input.shown.project_instructions;
-					if (loaded !== undefined) return loaded;
-					return input.env ? renderInstructions(await discoverInstructions(input.env.cwd, configDir)) : undefined;
-				},
-				{ tag: false },
+			frozenSection("project_instructions", async (input) =>
+				input.env ? renderInstructions(await discoverInstructions(input.env.cwd, configDir)) : undefined,
 			),
+			frozenSection("skills", async (input) => {
+				const canRead = input.agent.tools.some((tool) => tool.name === "read");
+				if (!input.env || !canRead) return undefined;
+				return renderSkills((await discoverSkills(input.env.cwd, configDir)).skills);
+			}),
 		],
 	});
 }

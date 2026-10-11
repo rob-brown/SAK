@@ -204,26 +204,44 @@ defmodule Sak.Chat do
     [%{id: id, role: :tool_result, blocks: [block]}]
   end
 
-  defp message_item(
-         %{"role" => "system", "sections" => %{"project_instructions" => text}},
-         id
-       )
-       when is_binary(text) do
-    [%{id: id, role: :system, blocks: [%{type: :context, text: instruction_summary(text)}]}]
+  defp message_item(%{"role" => "system", "sections" => sections}, id) when is_map(sections) do
+    case context_summary(sections) do
+      nil -> []
+      summary -> [%{id: id, role: :system, blocks: [%{type: :context, text: summary}]}]
+    end
   end
 
   defp message_item(_message, _id) do
     []
   end
 
-  defp instruction_summary(text) do
-    paths =
-      ~r/<instructions path="([^"]+)">/
-      |> Regex.scan(text, capture: :all_but_first)
-      |> Enum.map_join("\n", fn [path] -> "- `#{path}`" end)
+  defp context_summary(sections) do
+    parts =
+      Enum.reject(
+        [
+          loaded_list(
+            "project instructions",
+            sections["project_instructions"],
+            ~r/<instructions path="([^"]+)">/
+          ),
+          loaded_list("skills", sections["skills"], ~r/<skill name="([^"]+)"/)
+        ],
+        &is_nil/1
+      )
 
-    "Loaded project instructions:\n\n" <> paths
+    if parts == [], do: nil, else: Enum.join(parts, "\n\n")
   end
+
+  defp loaded_list(label, text, pattern) when is_binary(text) do
+    items =
+      pattern
+      |> Regex.scan(text, capture: :all_but_first)
+      |> Enum.map_join("\n", fn [item] -> "- `#{item}`" end)
+
+    "Loaded #{label}:\n\n" <> items
+  end
+
+  defp loaded_list(_label, _text, _pattern), do: nil
 
   defp blocks(content) when is_binary(content) do
     [%{type: :text, text: content}]

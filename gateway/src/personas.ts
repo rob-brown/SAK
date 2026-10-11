@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { splitFrontmatter } from "./frontmatter.ts";
 import { defaultInstructions } from "./prompt.ts";
 import { CODEMODE, TOOL_NAMES } from "./tools.ts";
 
@@ -88,17 +89,6 @@ async function readPersonaFiles(directory: string): Promise<Persona[]> {
 		}),
 	);
 	return personas.flatMap((persona) => (persona ? [persona] : []));
-}
-
-function splitFrontmatter(text: string): { fields: Record<string, string>; body: string } {
-	const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(text);
-	if (!match) return { fields: {}, body: text };
-	const fields: Record<string, string> = {};
-	for (const line of (match[1] ?? "").split(/\r?\n/)) {
-		const field = /^([A-Za-z][\w-]*):\s*(.*)$/.exec(line);
-		if (field?.[1] !== undefined) fields[field[1]] = field[2] ?? "";
-	}
-	return { fields, body: match[2] ?? "" };
 }
 
 function mapTools(list: string, warnings: string[]): string[] {

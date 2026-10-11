@@ -90,6 +90,30 @@ defmodule Sak.ChatTest do
       assert summary =~ "- `/repo/CLAUDE.md`"
     end
 
+    test "lists loaded skills in the same context item and ignores sections that are removed" do
+      # Arrange
+      skills =
+        ~s(<skills>\npreface\n<skill name="pdf" location="/s/pdf/SKILL.md">Fill forms</skill>\n<skill name="sql" location="/s/sql/SKILL.md">Query</skill>\n</skills>)
+
+      entry = %{
+        "kind" => "pi.system",
+        "id" => 3,
+        "model" => [
+          %{
+            "role" => "system",
+            "sections" => %{"skills" => skills, "project_instructions" => nil}
+          }
+        ]
+      }
+
+      # Act
+      chat = Chat.from_snapshot(%{"entries" => [entry]})
+
+      # Assert
+      assert [%{role: :system, blocks: [%{type: :context, text: summary}]}] = Chat.items(chat)
+      assert summary == "Loaded skills:\n\n- `pdf`\n- `sql`"
+    end
+
     test "restores the in-flight assistant message from the generation field" do
       # Arrange
       snapshot = %{
