@@ -13,7 +13,9 @@ export const DESCRIPTION = [
 
 export const PARAMETERS = Type.Object({
 	prompts: Type.Array(Type.String({ minLength: 1 }), { minItems: 1, maxItems: MAX_PROMPTS }),
-	persona: Type.Optional(Type.String({ description: "Persona name; defaults to the default persona" })),
+	persona: Type.Optional(
+		Type.String({ description: "A persona name, or a short description of the role wanted; the closest available persona is used" }),
+	),
 });
 
 export const AgentCatalogEntry = defineTool({

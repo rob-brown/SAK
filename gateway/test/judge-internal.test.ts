@@ -111,6 +111,31 @@ test("an unsure judge, a failing judge, an explicit persona and a single persona
 	await Promise.all([unsure, failing, explicit, alone].map((server) => server.close()));
 });
 
+test("a persona that matches no name is treated as a description and the judge picks the closest persona", async () => {
+	// Arrange
+	const server = await fakeServer(() => ({ status: 200, body: choiceAnswers({ closest: ["reader", 0.95] }) }));
+	const unsure = await fakeServer(() => ({ status: 200, body: choiceAnswers({ closest: ["reader", 0.4] }) }));
+	const harness = await setup(undefined, 6, client(server.url), { pickPersonas: true });
+	const doubtful = await setup(undefined, 6, client(unsure.url), { pickPersonas: true });
+	await withReader(harness);
+	await withReader(doubtful);
+	const description = "Senior engineer who reads files and reviews them";
+
+	// Act
+	const matched = await delegate(harness, { prompts: ["a"], persona: description });
+	const kept = await delegate(doubtful, { prompts: ["a"], persona: description });
+
+	// Assert
+	assert.deepEqual(matched.get("a"), READER_TOOLS);
+	assert.deepEqual(kept.get("a"), FULL_TOOLS);
+	assert.deepEqual(server.seen[0]?.body.state, { wanted: description });
+	assert.equal(server.seen[0]?.body.questions.closest.criteria.reader, "Reads and summarises files, never edits");
+	await harness.close();
+	await doubtful.close();
+	await server.close();
+	await unsure.close();
+});
+
 test("without the pick_personas setting the judge is not consulted", async () => {
 	// Arrange
 	const server = await fakeServer(picks);

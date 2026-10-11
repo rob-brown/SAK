@@ -11,10 +11,10 @@ import {
 } from "@earendil-works/pi-durable";
 import { seedMeta } from "../meta.ts";
 import type { InternalJudge } from "../judge/internal.ts";
-import { findPersona, type Persona } from "../personas.ts";
+import type { Persona } from "../personas.ts";
 import { toolsNamed } from "../tools.ts";
 import { AGENT, DESCRIPTION, PARAMETERS } from "./catalog.ts";
-import { personasFor } from "./select.ts";
+import { closestPersona, personasFor } from "./select.ts";
 import type { Semaphore } from "./semaphore.ts";
 
 const NAME_CHARS = 80;
@@ -38,10 +38,8 @@ export function subagentExtension({ judge, personasDir, semaphore }: SubagentDep
 		replay: "safe",
 		executionMode: "sequential",
 		execute: async (args, api, context) => {
-			const explicit = args.persona
-				? await findPersona(personasDir, args.persona).catch((error: unknown) => error as Error)
-				: undefined;
-			if (explicit instanceof Error) return failure(explicit.message);
+			const explicit = args.persona ? await closestPersona({ api, context, judge, personasDir }, args.persona) : undefined;
+			if (args.persona && explicit === undefined) return failure(`unknown persona ${args.persona}`);
 			const parent = await api.agent(context);
 			const keys = args.prompts.map((prompt) => nextKey(occurrences, api.taskId, prompt, args.persona ?? ""));
 			const personas = await personasFor({ api, context, explicit, judge, keys, personasDir, prompts: args.prompts });

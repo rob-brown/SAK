@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { ToolExecutionApi } from "@earendil-works/pi-durable";
 import { type Choice, type InternalJudge, pickMany } from "../judge/internal.ts";
 import { noteFor, recordFromTool } from "../judge/note.ts";
@@ -25,6 +26,40 @@ export async function personasFor(selection: Selection): Promise<Persona[]> {
 	if (judge === undefined || available.length < 2) return prompts.map(() => fallback);
 	const names = await chosenNames(selection, judge, available, fallback);
 	return names.map((name) => available.find((persona) => persona.name === name) ?? fallback);
+}
+
+export async function closestPersona(
+	{ api, context, judge, personasDir }: Pick<Selection, "api" | "context" | "judge" | "personasDir">,
+	wanted: string,
+): Promise<Persona | undefined> {
+	const available = await loadPersonas(personasDir);
+	const exact = available.find((persona) => persona.name === wanted);
+	if (exact !== undefined || judge === undefined) return exact;
+	const fallback = available.find((persona) => persona.name === DEFAULT_PERSONA_NAME) as Persona;
+	const key = `persona-hint:${createHash("sha256").update(wanted).digest("hex").slice(0, 16)}`;
+	const known = await api.memo<string>(key, context);
+	const name = known ?? (await api.memo<string>(key, await pickClosest(judge, available, fallback, wanted), context));
+	return available.find((persona) => persona.name === name) ?? fallback;
+}
+
+async function pickClosest(
+	judge: InternalJudge,
+	available: readonly Persona[],
+	fallback: Persona,
+	wanted: string,
+): Promise<string> {
+	const options: Record<string, string> = Object.fromEntries(
+		available.map((persona) => [persona.name, persona.description || persona.name]),
+	);
+	const choices: Record<string, Choice> = {
+		closest: {
+			instructions: `Which persona best matches the role described in \`wanted\`? Choose "${fallback.name}" unless a specialised persona clearly fits.`,
+			options,
+		},
+	};
+	const { answers } = await askJudge(judge, { wanted }, choices);
+	const answer = answers.closest;
+	return answer !== undefined && answer.probability >= judge.minConfidence ? answer.choice : fallback.name;
 }
 
 async function chosenNames(
