@@ -142,6 +142,40 @@ defmodule Sak.ToolFormatTest do
     assert AgentFormat.result("unknown persona ghost") == nil
   end
 
+  test "only the first three prompts are shown, each cut to 400 characters, and both cuts are said" do
+    # Arrange
+    long = String.duplicate("a", 450)
+    arguments = %{"prompts" => [long, "two", "three", "four", "five"]}
+
+    # Act
+    text = AgentFormat.call(arguments)
+
+    # Assert
+    assert text =~ "agent · 5 subagents\n\n"
+    assert text =~ "> #{String.duplicate("a", 400)}\n>\n> … 50 more characters"
+    assert text =~ "**3.**\n\n> three"
+    refute text =~ "four"
+    assert String.ends_with?(text, "_… 2 more prompts not shown_")
+  end
+
+  test "answers follow the same limits with their own length cut and no note when everything fits" do
+    # Arrange
+    long = String.duplicate("b", 1_200)
+    many = Jason.encode!([long, "2", "3", "4"])
+    few = Jason.encode!(["1", "2", "3"])
+
+    # Act
+    cut = AgentFormat.result(many)
+    whole = AgentFormat.result(few)
+
+    # Assert
+    assert cut =~ "> #{String.duplicate("b", 1_000)}\n>\n> … 200 more characters"
+    refute cut =~ "**4.**"
+    assert String.ends_with?(cut, "_… 1 more answer not shown_")
+    refute whole =~ "not shown"
+    refute whole =~ "more characters"
+  end
+
   test "judge and agent calls are code-style fields, and results are formatted only when output is shown" do
     # Arrange
     judge_call = %{
