@@ -6,6 +6,7 @@ import { test } from "node:test";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import { createModels } from "@earendil-works/pi-ai/models";
 import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
+import { collapseSystemMessages } from "@earendil-works/pi-ai/utils/transcript";
 import { MemoryStorage } from "@earendil-works/pi-durable/storage/memory";
 import { Gateway } from "../src/gateway.ts";
 import { openHarness } from "../src/open.ts";
@@ -17,7 +18,8 @@ async function setup() {
 	models.setProvider(faux.provider);
 	const storage = new MemoryStorage();
 	const personasDir = await mkdtemp(join(tmpdir(), "sak-personas-"));
-	const harness = await openHarness(storage, models);
+	const configDir = await mkdtemp(join(tmpdir(), "sak-config-"));
+	const harness = await openHarness(storage, models, configDir);
 	const outgoing: Outgoing[] = [];
 	const ensured: string[] = [];
 	const model = faux.getModel();
@@ -37,7 +39,7 @@ async function setup() {
 		await gateway.close();
 		await harness.close(BACKGROUND_CONTEXT);
 	};
-	return { close, ensured, faux, gateway, outgoing, personasDir };
+	return { close, configDir, ensured, faux, gateway, outgoing, personasDir };
 }
 
 async function waitFor(condition: () => boolean) {
@@ -285,6 +287,43 @@ test("a failing script reports the error instead of throwing", async () => {
 	const snapshot = outgoing.filter((m) => m.type === "snapshot").pop() as { snapshot: { entries: unknown[] } };
 	const result = snapshot.snapshot.entries.find((entry) => (entry as { kind: string }).kind === "pi.tool-result");
 	assert.match(JSON.stringify(result), /Script failed/);
+	await close();
+});
+
+test("editing an instruction file mid-conversation is ignored so the request prefix stays cacheable", async () => {
+	// Arrange
+	const { close, faux, gateway, outgoing } = await setup();
+	const project = await mkdtemp(join(tmpdir(), "sak-project-"));
+	const file = join(project, "AGENTS.md");
+	await writeFile(file, "Always answer in French.");
+	const requests: unknown[][] = [];
+	const respond = () => (context: { messages: unknown[] }) => {
+		requests.push(collapseSystemMessages({ messages: structuredClone(context.messages) } as never).messages);
+		return fauxAssistantMessage("ok");
+	};
+	faux.setResponses([respond(), respond(), respond()]);
+	await gateway.handle({ id: "1", type: "create_conversation", cwd: project });
+	const { conversationId } = (reply(outgoing, "1") as { result: { conversationId: number } }).result;
+	await gateway.handle({ id: "2", type: "attach", conversationId });
+
+	// Act
+	await gateway.handle({ id: "3", type: "submit", conversationId, content: "one" });
+	await waitFor(() => requests.length === 1);
+	await waitFor(() => hasEvent(outgoing, "run_end"));
+	await gateway.handle({ id: "4", type: "submit", conversationId, content: "two" });
+	await waitFor(() => requests.length === 2);
+	await waitFor(() => outgoing.filter((m) => JSON.stringify(m).includes("run_end")).length >= 2);
+	await writeFile(file, "Always answer in German.");
+	await gateway.handle({ id: "5", type: "submit", conversationId, content: "three" });
+	await waitFor(() => requests.length === 3);
+
+	// Assert
+	const [first, second, third] = requests as [unknown[], unknown[], unknown[]];
+	assert.match(JSON.stringify(first), /Always answer in French\./);
+	assert.deepEqual(second.slice(0, first.length), first);
+	assert.deepEqual(third.slice(0, second.length), second);
+	assert.ok(first.length >= 2 && third.length > second.length);
+	assert.doesNotMatch(JSON.stringify(third), /German/);
 	await close();
 });
 

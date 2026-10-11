@@ -68,6 +68,28 @@ defmodule Sak.ChatTest do
              ] = blocks
     end
 
+    test "shows a context item listing the loaded instruction files" do
+      # Arrange
+      text =
+        ~s(<project_instructions>\n<instructions path="/home/me/.config/sak/AGENTS.md">\na\n</instructions>\n<instructions path="/repo/CLAUDE.md">\nb\n</instructions>\n</project_instructions>)
+
+      entry = %{
+        "kind" => "pi.system",
+        "id" => 3,
+        "model" => [%{"role" => "system", "sections" => %{"project_instructions" => text}}]
+      }
+
+      # Act
+      chat = Chat.from_snapshot(%{"entries" => [entry, user_entry(4, "hi")]})
+
+      # Assert
+      assert [%{role: :system, blocks: [%{type: :context, text: summary}]}, %{role: :user}] =
+               Chat.items(chat)
+
+      assert summary =~ "- `/home/me/.config/sak/AGENTS.md`"
+      assert summary =~ "- `/repo/CLAUDE.md`"
+    end
+
     test "restores the in-flight assistant message from the generation field" do
       # Arrange
       snapshot = %{

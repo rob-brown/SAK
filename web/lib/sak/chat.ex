@@ -204,8 +204,25 @@ defmodule Sak.Chat do
     [%{id: id, role: :tool_result, blocks: [block]}]
   end
 
+  defp message_item(
+         %{"role" => "system", "sections" => %{"project_instructions" => text}},
+         id
+       )
+       when is_binary(text) do
+    [%{id: id, role: :system, blocks: [%{type: :context, text: instruction_summary(text)}]}]
+  end
+
   defp message_item(_message, _id) do
     []
+  end
+
+  defp instruction_summary(text) do
+    paths =
+      ~r/<instructions path="([^"]+)">/
+      |> Regex.scan(text, capture: :all_but_first)
+      |> Enum.map_join("\n", fn [path] -> "- `#{path}`" end)
+
+    "Loaded project instructions:\n\n" <> paths
   end
 
   defp blocks(content) when is_binary(content) do

@@ -8,7 +8,8 @@ defmodule Sak.ChatFields do
   @argument_char_limit 120
   @summary_keys ["command", "path", "file_path", "code"]
 
-  @type kind :: :content | :reasoning | :description | :code_call | :tool_content | :error
+  @type kind ::
+          :content | :context | :reasoning | :description | :code_call | :tool_content | :error
   @type field :: %{index: non_neg_integer(), kind: kind(), text: String.t()}
   @type opts :: %{thinking_visible?: boolean(), tool_output_visible?: boolean()}
 
@@ -50,6 +51,10 @@ defmodule Sak.ChatFields do
   end
 
   defp block_field(%{type: :tool_result}, _index, _opts), do: []
+
+  defp block_field(%{type: :context, text: text}, index, _opts) do
+    present(index, :context, text)
+  end
 
   defp block_field(%{text: text}, index, _opts) do
     present(index, :content, text)

@@ -11,7 +11,7 @@ import type { Command, Outgoing } from "./protocol.ts";
 const config = loadConfig(process.env);
 const storage = await openNodeSqliteStorage(config.dbPath);
 const catalog = new ModelCatalog(config);
-const harness = await openHarness(storage, catalog.models);
+const harness = await openHarness(storage, catalog.models, config.configDir);
 
 const send = (message: Outgoing) => {
 	process.stdout.write(`${JSON.stringify(message)}\n`);
