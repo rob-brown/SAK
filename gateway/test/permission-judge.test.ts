@@ -16,8 +16,8 @@ import { hasEvent, reply, setup, waitFor } from "./support.ts";
 type Harness = Awaited<ReturnType<typeof setup>>;
 type Request = Extract<Outgoing, { type: "permission_request" }>;
 
-function noul(probability: number) {
-	return { status: 200, body: { model: "m", answers: { destructive: { type: "noul", noul: probability } } } };
+function noul(fraction: number) {
+	return { status: 200, body: { model: "m", answers: { destructive: { type: "score", score: fraction * 3 } } } };
 }
 
 function policy(mode: Mode, rules: { allow?: string[]; ask?: string[]; judge?: string[] } = {}): Policy {

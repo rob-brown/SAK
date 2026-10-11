@@ -15,16 +15,19 @@ const NOT_FLAGGED: Assessment = { flagged: false, message: undefined, note: unde
 
 const QUESTION = {
 	destructive: {
-		type: "noul",
+		type: "score",
 		instructions:
-			"Does running `command` permanently destroy or overwrite data that cannot be recovered from version control or recreated by a build? Use `facts` about the files it touches.",
-		criteria: {
-			true: "It deletes, overwrites or truncates data that exists only on this machine, or uncommitted work",
-			false:
-				"It only reads, or it changes files that are committed in version control or are regenerated build output",
-		},
+			"How much permanent data loss could running `command` cause? Data counts as lost only if it cannot be recovered from version control or recreated by a build. Use `facts` about the files it touches.",
+		criteria: [
+			"Harmless: it only reads, or changes nothing that matters",
+			"Low risk: it changes files that are committed in version control or are regenerated build output",
+			"Risky: it overwrites or removes files that may exist only on this machine",
+			"Destructive: it deletes, overwrites or truncates uncommitted work or data that exists only on this machine, or damages the system",
+		],
 	},
 } as const;
+
+const TOP_LEVEL = QUESTION.destructive.criteria.length - 1;
 
 export class PermissionJudge {
 	private readonly client: JudgeClient;
@@ -48,8 +51,9 @@ export class PermissionJudge {
 		try {
 			const state = { command, working_directory: cwd, facts: facts.lines };
 			const { answers } = await this.client.evaluate(state, QUESTION, signal);
-			const probability = (answers.destructive as { noul?: unknown } | undefined)?.noul;
-			if (typeof probability !== "number") throw new Error("the judge's answer was not a probability");
+			const score = (answers.destructive as { score?: unknown } | undefined)?.score;
+			if (typeof score !== "number") throw new Error("the judge's answer was not a score");
+			const probability = Math.round(Math.min(Math.max(score / TOP_LEVEL, 0), 1) * 10_000) / 10_000;
 			const flagged = probability >= this.threshold;
 			const percent = Math.round(probability * 100);
 			const note = record({
