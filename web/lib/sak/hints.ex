@@ -5,6 +5,7 @@ defmodule Sak.Hints do
   def for_assigns(assigns) do
     cond do
       assigns.permissions != [] -> [{"Allow", "y"}, {"Allow for session", "a"}, {"Deny", "n"}]
+      assigns.mode_picker != nil -> [{"Apply", "<enter>"}, {"Cancel", "<esc>"}]
       assigns.help_open? -> [{"Close", "<esc>"}]
       assigns.models != nil -> [{"Close", "<esc>"}]
       assigns.confirm != nil -> [{"Confirm", "<enter>"}, {"Cancel", "<esc>"}]

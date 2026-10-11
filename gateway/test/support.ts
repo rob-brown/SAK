@@ -34,6 +34,7 @@ export async function setup(policy?: Policy, subagentLimit?: number) {
 	const ensured: string[] = [];
 	const model = faux.getModel();
 	const gateway = new Gateway({
+		...(authorizer ? { authorizer } : {}),
 		...(broker ? { broker } : {}),
 		cwd: process.cwd(),
 		personasDir,

@@ -11,6 +11,7 @@ defmodule SakWeb.ChatLive.Events do
   alias SakWeb.ChatLive.Models
   alias SakWeb.ChatLive.NewSession
   alias SakWeb.ChatLive.Permission
+  alias SakWeb.ChatLive.PermissionMode
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
   alias SakWeb.ChatLive.Subagents
@@ -81,6 +82,14 @@ defmodule SakWeb.ChatLive.Events do
 
   def handle("sessions_filter_confirm", _params, socket) do
     Sessions.confirm_filter(socket)
+  end
+
+  def handle("mode_pick_index", %{"index" => index}, socket) do
+    PermissionMode.pick_index(socket, String.to_integer(index))
+  end
+
+  def handle("close_mode_picker", _params, socket) do
+    PermissionMode.close(socket)
   end
 
   def handle("subagent_select", %{"index" => index}, socket) do

@@ -35,6 +35,58 @@ defmodule SakWeb.Dialogs do
     """
   end
 
+  attr :picker, :map, required: true
+
+  def mode_picker(assigns) do
+    ~H"""
+    <div
+      id="mode-picker"
+      class="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-20"
+    >
+      <div class="bg-neutral-900 border border-neutral-700 rounded-md w-[40rem] flex flex-col">
+        <div class="px-3 py-2 border-b border-neutral-800 font-semibold">
+          Permissions for this session
+        </div>
+        <ul>
+          <li
+            :for={{mode, index} <- Enum.with_index(@picker.modes)}
+            id={"mode-#{mode}"}
+            data-selected={to_string(index == @picker.selected)}
+            phx-click="mode_pick_index"
+            phx-value-index={index}
+            class={[
+              "px-3 py-2 cursor-pointer",
+              index == @picker.selected && "bg-neutral-800 text-neutral-100",
+              index != @picker.selected && "text-neutral-400 hover:bg-neutral-800/60"
+            ]}
+          >
+            <p>
+              <span class="font-semibold">{mode}</span>
+              <span :if={mode == @picker.current} class="ml-2 text-xs text-green-400">in use</span>
+              <span :if={mode == @picker.default} class="ml-2 text-xs text-neutral-500">
+                config default
+              </span>
+            </p>
+            <p class="text-xs text-neutral-500">{mode_description(mode)}</p>
+          </li>
+        </ul>
+        <p class="px-3 py-2 border-t border-neutral-800 text-xs text-neutral-500">
+          j/k move · enter apply to this session and its subagents · esc cancel · deny rules always apply · lasts until the gateway restarts
+        </p>
+      </div>
+    </div>
+    """
+  end
+
+  defp mode_description("ask"),
+    do: "Ask before bash, write and edit. Reads inside the working directory are allowed."
+
+  defp mode_description("accept-edits"),
+    do: "Allow write and edit inside the working directory. Still ask before bash."
+
+  defp mode_description("auto"), do: "Allow everything that no deny rule blocks."
+  defp mode_description(_mode), do: ""
+
   attr :request, :map, required: true
   attr :waiting, :integer, default: 0
 

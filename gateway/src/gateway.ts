@@ -10,7 +10,9 @@ import {
 	watchEvents,
 } from "@earendil-works/pi-durable";
 import { readMeta, STATES, writeMeta } from "./meta.ts";
+import type { Authorizer } from "./permissions/authorizer.ts";
 import { type Approval, APPROVALS, type PermissionBroker } from "./permissions/broker.ts";
+import { type Mode, MODES } from "./permissions/rules.ts";
 import { DEFAULT_PERSONA_NAME, findPersona, loadPersonas } from "./personas.ts";
 import type { Command, ConversationSummary, Outgoing, SubagentSummary } from "./protocol.ts";
 import { toolsNamed } from "./tools.ts";
@@ -19,6 +21,7 @@ const context = BACKGROUND_CONTEXT;
 const LIST_LIMIT = 500;
 
 export type GatewayOptions = {
+	readonly authorizer?: Authorizer;
 	readonly broker?: PermissionBroker;
 	readonly cwd: string;
 	readonly ensureModel: (modelId: string) => Promise<void>;
@@ -75,6 +78,8 @@ export class Gateway {
 				return this.models();
 			case "list_subagents":
 				return this.subagents(command.conversationId);
+			case "permission_mode":
+				return this.permissionMode(command.conversationId, command.mode);
 			case "permission_reply":
 				return this.permissionReply(command.requestId, command.approval);
 			case "set_meta":
@@ -99,6 +104,17 @@ export class Gateway {
 			}),
 		);
 		return { subagents };
+	}
+
+	private async permissionMode(conversationId: number, mode: Mode | undefined) {
+		const authorizer = this.options.authorizer;
+		if (authorizer === undefined) throw new Error("permissions are not enabled");
+		await this.conversation(conversationId);
+		if (mode !== undefined) {
+			if (!MODES.includes(mode)) throw new Error(`unknown mode ${mode}`);
+			authorizer.setMode(conversationId, mode);
+		}
+		return { mode: authorizer.modeFor(conversationId), default: authorizer.defaultMode, modes: MODES };
 	}
 
 	private async permissionReply(requestId: string, approval: Approval) {

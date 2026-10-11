@@ -14,6 +14,7 @@ defmodule SakWeb.ChatLive.Keys do
   alias SakWeb.ChatLive.Models
   alias SakWeb.ChatLive.NewSession
   alias SakWeb.ChatLive.Permission
+  alias SakWeb.ChatLive.PermissionMode
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
   alias SakWeb.ChatLive.Subagents
@@ -40,6 +41,7 @@ defmodule SakWeb.ChatLive.Keys do
   end
 
   defp modal(%{permissions: [_ | _]}), do: :permission
+  defp modal(%{mode_picker: %{}}), do: :mode_picker
   defp modal(%{help_open?: true}), do: :help
   defp modal(%{models: %{}}), do: :models
   defp modal(%{new_session: %{}}), do: :wizard
@@ -53,6 +55,17 @@ defmodule SakWeb.ChatLive.Keys do
   defp modal_key(:permission, key, socket) do
     Permission.key(socket, key)
   end
+
+  defp modal_key(:mode_picker, code, socket) when code in ["j", "down"] do
+    PermissionMode.move(socket, 1)
+  end
+
+  defp modal_key(:mode_picker, code, socket) when code in ["k", "up"] do
+    PermissionMode.move(socket, -1)
+  end
+
+  defp modal_key(:mode_picker, "enter", socket), do: PermissionMode.pick(socket)
+  defp modal_key(:mode_picker, "escape", socket), do: PermissionMode.close(socket)
 
   defp modal_key(:help, "escape", socket) do
     close_help(socket)

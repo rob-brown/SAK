@@ -25,14 +25,16 @@ const send = (message: Outgoing) => {
 };
 
 const broker = new PermissionBroker(send);
+const authorizer = new Authorizer(config.permissions, broker, rootConversation(storage));
 const harness = await openHarness(storage, catalog.models, {
-	authorizer: new Authorizer(config.permissions, broker, rootConversation(storage)),
+	authorizer,
 	configDir: config.configDir,
 	instructionMaxChars: config.instructionMaxChars,
 	subagents: { personasDir: config.personasDir, semaphore: new Semaphore(config.subagentLimit) },
 });
 
 const gateway = new Gateway({
+	authorizer,
 	broker,
 	cwd: config.cwd,
 	ensureModel: (modelId) => catalog.ensure(modelId),

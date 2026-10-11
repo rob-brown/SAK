@@ -9,6 +9,7 @@
     data-wizard-open={to_string(@new_session != nil)}
     data-confirm-open={to_string(@confirm != nil)}
     data-permission-open={to_string(@permissions != [])}
+    data-mode-picker-open={to_string(@mode_picker != nil)}
     data-rename-open={to_string(@rename != nil)}
     data-command-open={to_string(@command_open?)}
     class="flex flex-col h-screen bg-neutral-950 text-neutral-100 font-mono text-sm"
@@ -165,6 +166,17 @@
               Subagents
             </button>
           </div>
+          <span
+            :if={@permission_mode}
+            id="permission-mode"
+            class={[
+              "text-xs shrink-0",
+              @permission_mode == "auto" && "text-red-400",
+              @permission_mode != "auto" && "text-neutral-500"
+            ]}
+          >
+            permissions: {@permission_mode}
+          </span>
           <span :if={@zoomed_pane == :chat_history} class="text-xs text-yellow-600 shrink-0">
             zoomed — z to restore
           </span>
@@ -378,6 +390,7 @@
     />
     <.wizard :if={@new_session} new_session={@new_session} />
     <.confirm :if={@confirm} confirm={@confirm} />
+    <.mode_picker :if={@mode_picker} picker={@mode_picker} />
     <.permission
       :if={@permissions != []}
       request={hd(@permissions)}

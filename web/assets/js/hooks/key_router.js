@@ -68,6 +68,7 @@ export function isModalOpen(dataset) {
     dataset.modelsOpen === "true" ||
     dataset.confirmOpen === "true" ||
     dataset.permissionOpen === "true" ||
+    dataset.modePickerOpen === "true" ||
     dataset.renameOpen === "true" ||
     dataset.wizardOpen === "true" ||
     dataset.commandOpen === "true"
@@ -76,6 +77,7 @@ export function isModalOpen(dataset) {
 
 export function modalKeys(dataset) {
   if (dataset.permissionOpen === "true") return ["escape", "y", "a", "n"]
+  if (dataset.modePickerOpen === "true") return ["escape", "enter", "up", "down", "j", "k"]
   return dataset.confirmOpen === "true" ? ["escape", "enter"] : ["escape"]
 }
 

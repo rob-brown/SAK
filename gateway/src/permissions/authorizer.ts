@@ -1,5 +1,5 @@
 import type { Context, PermissionBroker } from "./broker.ts";
-import { type Call, decide, grantFor, type Policy, type Rule, summarize } from "./rules.ts";
+import { type Call, decide, grantFor, type Mode, type Policy, type Rule, summarize } from "./rules.ts";
 
 export type Where = {
 	readonly conversationId: number;
@@ -13,6 +13,7 @@ const itself: RootOf = async (conversationId) => conversationId;
 export class Authorizer {
 	private readonly broker: PermissionBroker;
 	private readonly grants = new Map<number, Rule[]>();
+	private readonly modes = new Map<number, Mode>();
 	private readonly policy: Policy;
 	private readonly rootOf: RootOf;
 
@@ -22,10 +23,23 @@ export class Authorizer {
 		this.rootOf = rootOf;
 	}
 
+	get defaultMode(): Mode {
+		return this.policy.mode;
+	}
+
+	modeFor(conversationId: number): Mode {
+		return this.modes.get(conversationId) ?? this.policy.mode;
+	}
+
+	setMode(conversationId: number, mode: Mode) {
+		this.modes.set(conversationId, mode);
+	}
+
 	async authorize(call: Call, where: Where, context: Context): Promise<string | undefined> {
 		const root = await this.rootOf(where.conversationId);
 		const granted = this.grants.get(root) ?? [];
-		const decision = decide({ ...this.policy, allow: [...this.policy.allow, ...granted] }, call, where.cwd);
+		const effective = { ...this.policy, mode: this.modeFor(root), allow: [...this.policy.allow, ...granted] };
+		const decision = decide(effective, call, where.cwd);
 		const summary = summarize(call);
 		if (decision === "allow") return undefined;
 		if (decision === "deny") return `Permission denied by a rule: ${call.name} ${summary}`;

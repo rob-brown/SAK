@@ -14,6 +14,7 @@ defmodule SakWeb.ChatLive do
   alias SakWeb.ChatLive.Mention
   alias SakWeb.ChatLive.NewSession
   alias SakWeb.ChatLive.Permission
+  alias SakWeb.ChatLive.PermissionMode
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
   alias SakWeb.ChatLive.Subagents
@@ -173,6 +174,8 @@ defmodule SakWeb.ChatLive do
       models: nil,
       new_session: nil,
       confirm: nil,
+      mode_picker: nil,
+      permission_mode: nil,
       permissions: [],
       rename: nil,
       command_open?: false,
@@ -225,6 +228,8 @@ defmodule SakWeb.ChatLive do
     socket
     |> assign(current_id: nil, chat: %Chat{})
     |> Permission.reset()
+    |> PermissionMode.close()
+    |> assign(permission_mode: nil)
     |> Entries.reset()
     |> Items.refresh()
   end
@@ -234,7 +239,11 @@ defmodule SakWeb.ChatLive do
   defp attach(%{assigns: %{current_id: id}} = socket) do
     if connected?(socket) do
       PubSub.subscribe(Sak.PubSub, Gateway.conversation_topic(id))
-      socket |> log("attach ##{id}") |> request("attach", %{"conversationId" => id})
+
+      socket
+      |> log("attach ##{id}")
+      |> request("attach", %{"conversationId" => id})
+      |> PermissionMode.refresh()
     else
       socket
     end

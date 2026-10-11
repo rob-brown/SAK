@@ -5,6 +5,7 @@ defmodule SakWeb.ChatLive.Command do
   alias Phoenix.LiveView
   alias Sak.Command
   alias SakWeb.ChatLive.Models
+  alias SakWeb.ChatLive.PermissionMode
   alias SakWeb.ChatLive.Sessions
 
   def open(socket) do
@@ -47,6 +48,10 @@ defmodule SakWeb.ChatLive.Command do
 
   defp execute(socket, %Command{name: "model"}) do
     Models.open(socket)
+  end
+
+  defp execute(socket, %Command{name: "permissions"}) do
+    PermissionMode.open(socket)
   end
 
   defp execute(%{assigns: %{current_id: nil}} = socket, _command) do

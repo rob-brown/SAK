@@ -21,6 +21,11 @@ defmodule Sak.Command do
         description: "List the models the endpoint offers and show the one in use"
       },
       %__MODULE__{
+        name: "permissions",
+        aliases: ["mode"],
+        description: "Choose when this session asks before running tools"
+      },
+      %__MODULE__{
         name: "clear",
         aliases: ["new"],
         description: "Reset the conversation to a fresh session"
