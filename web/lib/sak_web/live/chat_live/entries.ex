@@ -29,14 +29,20 @@ defmodule SakWeb.ChatLive.Entries do
   end
 
   defp enter(socket, :entries) do
-    socket |> Component.assign(chat_tab: :entries) |> refresh() |> select_last()
+    socket
+    |> Subagents.close_view()
+    |> Component.assign(chat_tab: :entries)
+    |> refresh()
+    |> select_last()
   end
 
   defp enter(socket, :subagents) do
     socket |> Component.assign(chat_tab: :subagents) |> Subagents.refresh()
   end
 
-  defp enter(socket, :chat), do: Component.assign(socket, chat_tab: :chat)
+  defp enter(socket, :chat) do
+    socket |> Subagents.close_view() |> Component.assign(chat_tab: :chat)
+  end
 
   def refresh(%{assigns: %{chat_tab: :entries, chat: chat}} = socket) do
     rows = EntryRows.rows(chat.records)

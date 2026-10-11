@@ -69,11 +69,20 @@ defmodule SakWeb.ChatLive do
     {:noreply, Permission.resolved(socket, request_id)}
   end
 
+  def handle_info({:gateway_snapshot, id, snapshot}, %{assigns: %{viewed: %{id: id}}} = socket) do
+    {:noreply, Subagents.viewed_snapshot(socket, snapshot)}
+  end
+
+  def handle_info({:gateway_events, id, events}, %{assigns: %{viewed: %{id: id}}} = socket) do
+    {:noreply, Subagents.viewed_events(socket, events)}
+  end
+
   def handle_info(:gateway_started, socket) do
     socket =
       socket
       |> assign(gateway_up?: true)
       |> Permission.reset()
+      |> Subagents.reattach()
       |> log("gateway started")
       |> Sessions.refresh()
 
@@ -162,6 +171,7 @@ defmodule SakWeb.ChatLive do
       entry_rows: [],
       entries_selected: 0,
       entries_open: MapSet.new(),
+      viewed: nil,
       subagents: [],
       subagents_selected: 0,
       show_finished_subagents?: false,

@@ -11,6 +11,7 @@
     data-permission-open={to_string(@permissions != [])}
     data-mode-picker-open={to_string(@mode_picker != nil)}
     data-usage-open={to_string(@usage != nil)}
+    data-subagent-viewing={to_string(@viewed != nil)}
     data-rename-open={to_string(@rename != nil)}
     data-command-open={to_string(@command_open?)}
     class="flex flex-col h-screen bg-neutral-950 text-neutral-100 font-mono text-sm"
@@ -262,7 +263,43 @@
           </div>
         </div>
 
-        <div :if={@chat_tab == :subagents} id="subagents-pane" class="flex-1 overflow-y-auto">
+        <div
+          :if={@chat_tab == :subagents and @viewed != nil}
+          id="subagent-view-pane"
+          class="flex-1 min-h-0 flex flex-col"
+        >
+          <div class="px-3 py-1 border-b border-neutral-800 text-xs text-neutral-400 shrink-0 flex justify-between gap-3">
+            <span id="subagent-view-title" class="truncate">
+              subagent #{@viewed.id}{if @viewed.persona, do: " · #{@viewed.persona}"} · {@viewed.label}
+            </span>
+            <span class="shrink-0">
+              {if @viewed.chat.running?, do: "running", else: "idle"} · esc back to the list
+            </span>
+          </div>
+          <div id="subagent-view" class="flex-1 overflow-y-auto p-4 space-y-1">
+            <p
+              :if={Subagents.viewed_items(assigns) == []}
+              id="subagent-view-empty"
+              class="text-neutral-600"
+            >
+              nothing yet
+            </p>
+            <.message
+              :for={item <- Subagents.viewed_items(assigns)}
+              id={"subagent-item-#{item.id}"}
+              item={item}
+              opts={Items.visibility(assigns)}
+              term=""
+              current={nil}
+            />
+          </div>
+        </div>
+
+        <div
+          :if={@chat_tab == :subagents and @viewed == nil}
+          id="subagents-pane"
+          class="flex-1 overflow-y-auto"
+        >
           <p :if={Subagents.rows(assigns) == []} id="subagents-empty" class="p-4 text-neutral-600">
             {if @show_finished_subagents?,
               do: "no subagents",

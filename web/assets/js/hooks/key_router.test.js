@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import {chatScrolls, isModalOpen, modalKeys} from "./key_router.js"
+import {chatScrolls, isModalOpen, modalKeys, scrollTargetId} from "./key_router.js"
 
 test("no modal is open when none of the flags are set", () => {
   assert.equal(isModalOpen({}), false)
@@ -48,4 +48,16 @@ test("the chat pane scrolls natively on the chat tab and hands keys to the serve
 
   // Assert
   assert.deepEqual(results, [true, false, false, false])
+})
+
+test("while a subagent transcript is open the keys scroll it instead of the chat history", () => {
+  // Arrange
+  const viewing = {focusedPane: "chat_history", chatTab: "subagents", subagentViewing: "true"}
+  const listing = {focusedPane: "chat_history", chatTab: "subagents", subagentViewing: "false"}
+
+  // Act
+  const results = [chatScrolls(viewing), chatScrolls(listing), scrollTargetId(viewing), scrollTargetId(listing)]
+
+  // Assert
+  assert.deepEqual(results, [true, false, "subagent-view", "chat-history"])
 })

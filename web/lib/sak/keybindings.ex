@@ -28,6 +28,7 @@ defmodule Sak.Keybindings do
       {"down", "Move the selection down"},
       {"k", "Move the selection up"},
       {"up", "Move the selection up"},
+      {"enter", "Open the selected subagent transcript (read-only; esc goes back)"},
       {"a", "Show or hide finished subagents (only running ones are listed by default)"},
       {"x", "Stop the selected running subagent"}
     ]

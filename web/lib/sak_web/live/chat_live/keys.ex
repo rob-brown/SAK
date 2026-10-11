@@ -176,6 +176,12 @@ defmodule SakWeb.ChatLive.Keys do
 
   defp chat_key(_key, socket), do: socket
 
+  defp subagents_key(code, %{assigns: %{viewed: %{}}} = socket) when code in ["escape", "h"] do
+    Subagents.close_view(socket)
+  end
+
+  defp subagents_key(_key, %{assigns: %{viewed: %{}}} = socket), do: socket
+  defp subagents_key("enter", socket), do: Subagents.view(socket)
   defp subagents_key(code, socket) when code in ["j", "down"], do: Subagents.move(socket, 1)
   defp subagents_key(code, socket) when code in ["k", "up"], do: Subagents.move(socket, -1)
   defp subagents_key("a", socket), do: Subagents.toggle_finished(socket)

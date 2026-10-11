@@ -2,15 +2,69 @@ defmodule SakWeb.ChatLive.Subagents do
   @moduledoc false
 
   alias Phoenix.Component
+  alias Phoenix.PubSub
+  alias Sak.Chat
+  alias Sak.Gateway
   alias Sak.SubagentRows
 
   def reset(socket) do
-    Component.assign(socket,
+    socket
+    |> leave()
+    |> Component.assign(
       subagents: [],
       subagents_selected: 0,
       show_finished_subagents?: false
     )
   end
+
+  def view(socket) do
+    case selected(socket.assigns) do
+      nil -> socket
+      row -> socket |> leave() |> enter(row)
+    end
+  end
+
+  def close_view(socket), do: leave(socket)
+
+  def reattach(%{assigns: %{viewed: %{id: id}}} = socket) do
+    client().request("attach", %{"conversationId" => id})
+    socket
+  end
+
+  def reattach(socket), do: socket
+
+  def viewed_snapshot(%{assigns: %{viewed: viewed}} = socket, snapshot) do
+    Component.assign(socket, viewed: %{viewed | chat: Chat.from_snapshot(snapshot)})
+  end
+
+  def viewed_events(%{assigns: %{viewed: viewed}} = socket, events) do
+    {chat, _ops} = Chat.apply_events(viewed.chat, events)
+    Component.assign(socket, viewed: %{viewed | chat: chat})
+  end
+
+  def viewed_items(%{viewed: %{chat: chat}}), do: Chat.items(chat)
+
+  defp enter(socket, row) do
+    PubSub.subscribe(Sak.PubSub, Gateway.conversation_topic(row.id))
+
+    case client().request("attach", %{"conversationId" => row.id}) do
+      {:ok, _result} ->
+        viewed = %{id: row.id, label: row.label, persona: row.persona, chat: %Chat{}}
+        Component.assign(socket, viewed: viewed, last_error: nil)
+
+      {:error, reason} ->
+        PubSub.unsubscribe(Sak.PubSub, Gateway.conversation_topic(row.id))
+        Component.assign(socket, last_error: reason)
+    end
+  end
+
+  defp leave(%{assigns: %{viewed: %{id: id}}} = socket) do
+    PubSub.unsubscribe(Sak.PubSub, Gateway.conversation_topic(id))
+    client().request("detach", %{"conversationId" => id})
+    Component.assign(socket, viewed: nil)
+  end
+
+  defp leave(socket), do: Component.assign(socket, viewed: nil)
 
   def refresh(%{assigns: %{chat_tab: :subagents, current_id: id}} = socket) when is_integer(id) do
     case client().request("list_subagents", %{"conversationId" => id}) do

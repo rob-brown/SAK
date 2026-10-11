@@ -36,15 +36,19 @@ const SCROLL_LINE = {j: 1, down: 1, k: -1, up: -1}
 const SCROLL_HALF_PAGE = {"ctrl-d": 1, "ctrl-u": -1}
 const LINE_PX = 24
 
-function scrollChat(deltaPx) {
-  const el = document.getElementById("chat-history")
+export function scrollTargetId(dataset) {
+  return dataset.subagentViewing === "true" ? "subagent-view" : "chat-history"
+}
+
+function scrollChat(dataset, deltaPx) {
+  const el = document.getElementById(scrollTargetId(dataset))
   if (el) el.scrollTop += deltaPx
 }
 
 const SCROLL_EDGE = {g: "top", G: "bottom"}
 
-function scrollChatToEdge(edge) {
-  const el = document.getElementById("chat-history")
+function scrollChatToEdge(dataset, edge) {
+  const el = document.getElementById(scrollTargetId(dataset))
   if (!el) return
   el.scrollTop = edge === "top" ? 0 : el.scrollHeight
 }
@@ -54,6 +58,7 @@ function onlyShift(mods) {
 }
 
 export function chatScrolls(dataset) {
+  if (dataset.subagentViewing === "true") return true
   const serverTabs = ["entries", "subagents"]
   return (dataset.focusedPane || "chat_history") === "chat_history" && !serverTabs.includes(dataset.chatTab)
 }
@@ -110,7 +115,7 @@ const KeyRouter = {
       if (key in SCROLL_LINE && mods.length === 0) {
         event.preventDefault()
         if (scrollsChat) {
-          scrollChat(SCROLL_LINE[key] * LINE_PX)
+          scrollChat(this.el.dataset, SCROLL_LINE[key] * LINE_PX)
         } else {
           this.pushEvent("key", {key, modifiers: mods})
         }
@@ -121,9 +126,9 @@ const KeyRouter = {
       if (combo in SCROLL_HALF_PAGE) {
         event.preventDefault()
         if (scrollsChat) {
-          const el = document.getElementById("chat-history")
+          const el = document.getElementById(scrollTargetId(this.el.dataset))
           const page = el ? el.clientHeight / 2 : 300
-          scrollChat(SCROLL_HALF_PAGE[combo] * page)
+          scrollChat(this.el.dataset, SCROLL_HALF_PAGE[combo] * page)
         } else if (pane === "chat_history") {
           this.pushEvent("key", {key: combo, modifiers: []})
         }
@@ -132,11 +137,11 @@ const KeyRouter = {
 
       if (key in SCROLL_EDGE && onlyShift(mods) && scrollsChat) {
         event.preventDefault()
-        scrollChatToEdge(SCROLL_EDGE[key])
+        scrollChatToEdge(this.el.dataset, SCROLL_EDGE[key])
         return
       }
 
-      if (key === "enter" && mods.length === 0 && scrollsChat) {
+      if (key === "enter" && mods.length === 0 && scrollsChat && this.el.dataset.subagentViewing !== "true") {
         event.preventDefault()
         focusPromptTextarea()
         return
