@@ -9,9 +9,20 @@ defmodule Sak.ChatFields do
   @summary_keys ["command", "path", "file_path", "code"]
 
   @type kind ::
-          :content | :context | :reasoning | :description | :code_call | :tool_content | :error
+          :content
+          | :context
+          | :reasoning
+          | :description
+          | :code_call
+          | :tool_content
+          | :error
+          | :stats
   @type field :: %{index: non_neg_integer(), kind: kind(), text: String.t()}
-  @type opts :: %{thinking_visible?: boolean(), tool_output_visible?: boolean()}
+  @type opts :: %{
+          required(:thinking_visible?) => boolean(),
+          required(:tool_output_visible?) => boolean(),
+          optional(:stats_visible?) => boolean()
+        }
 
   @spec fields(map(), opts()) :: [field()]
   def fields(item, opts) do
@@ -20,7 +31,8 @@ defmodule Sak.ChatFields do
       |> Enum.with_index()
       |> Enum.flat_map(fn {block, index} -> block_field(block, index, opts) end)
 
-    block_fields ++ error_field(item, length(item.blocks))
+    block_fields ++
+      error_field(item, length(item.blocks)) ++ stats_field(item, opts, length(item.blocks) + 1)
   end
 
   defp block_field(%{type: :text, text: text}, index, _opts) do
@@ -67,6 +79,35 @@ defmodule Sak.ChatFields do
   end
 
   defp error_field(_item, _index), do: []
+
+  defp stats_field(%{stats: stats}, %{stats_visible?: true}, index) when is_map(stats) do
+    case stats_text(stats) do
+      "" -> []
+      text -> [%{index: index, kind: :stats, text: text}]
+    end
+  end
+
+  defp stats_field(_item, _opts, _index), do: []
+
+  defp stats_text(%{kind: :tool, name: name, ms: ms}) when is_number(ms) do
+    "#{name} · #{Sak.Usage.duration(ms)}"
+  end
+
+  defp stats_text(%{kind: :model} = stats) do
+    [
+      stats.ms && Sak.Usage.duration(stats.ms),
+      stats.input && "#{Sak.Usage.tokens(stats.input)} in",
+      stats.output && "#{Sak.Usage.tokens(stats.output)} out",
+      positive(stats.cache_read) && "#{Sak.Usage.tokens(stats.cache_read)} cached"
+    ]
+    |> Enum.filter(& &1)
+    |> Enum.join(" · ")
+  end
+
+  defp stats_text(_stats), do: ""
+
+  defp positive(value) when is_number(value) and value > 0, do: value
+  defp positive(_value), do: nil
 
   defp present(index, kind, text) do
     case String.trim(text) do

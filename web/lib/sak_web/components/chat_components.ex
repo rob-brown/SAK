@@ -32,6 +32,7 @@ defmodule SakWeb.ChatComponents do
   defp field_class(_role, :content), do: "w-full px-3 py-1 text-green-400 chat-markdown"
   defp field_class(_role, :error), do: "w-full px-3 py-1 text-red-400 chat-markdown"
   defp field_class(_role, :context), do: "w-full px-3 py-1 text-neutral-400 chat-markdown"
+  defp field_class(_role, :stats), do: "w-full px-3 pb-1 text-xs text-neutral-600"
 
   defp field_class(_role, :code_call) do
     "w-full px-3 py-2 bg-[rgb(30,38,55)] text-fuchsia-400 chat-markdown code-call"

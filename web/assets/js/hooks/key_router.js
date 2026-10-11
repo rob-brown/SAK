@@ -69,6 +69,7 @@ export function isModalOpen(dataset) {
     dataset.confirmOpen === "true" ||
     dataset.permissionOpen === "true" ||
     dataset.modePickerOpen === "true" ||
+    dataset.usageOpen === "true" ||
     dataset.renameOpen === "true" ||
     dataset.wizardOpen === "true" ||
     dataset.commandOpen === "true"

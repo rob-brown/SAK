@@ -10,6 +10,7 @@
     data-confirm-open={to_string(@confirm != nil)}
     data-permission-open={to_string(@permissions != [])}
     data-mode-picker-open={to_string(@mode_picker != nil)}
+    data-usage-open={to_string(@usage != nil)}
     data-rename-open={to_string(@rename != nil)}
     data-command-open={to_string(@command_open?)}
     class="flex flex-col h-screen bg-neutral-950 text-neutral-100 font-mono text-sm"
@@ -202,7 +203,7 @@
           <span :if={@chat_tab == :chat} class="text-xs text-neutral-600 shrink-0">
             t {if @thinking_visible?, do: "on", else: "off"} · o {if @tool_output_visible?,
               do: "on",
-              else: "off"}
+              else: "off"} · s {if @stats_visible?, do: "on", else: "off"}
           </span>
           <span :if={!@gateway_up?} class="text-red-500 font-bold shrink-0">reconnecting…</span>
         </div>
@@ -391,6 +392,7 @@
     <.wizard :if={@new_session} new_session={@new_session} />
     <.confirm :if={@confirm} confirm={@confirm} />
     <.mode_picker :if={@mode_picker} picker={@mode_picker} />
+    <.usage :if={@usage} usage={@usage} />
     <.permission
       :if={@permissions != []}
       request={hd(@permissions)}

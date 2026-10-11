@@ -184,6 +184,8 @@ defmodule SakWeb.ChatLive do
       command_results: [],
       thinking_visible?: true,
       tool_output_visible?: false,
+      stats_visible?: true,
+      usage: nil,
       chat_search_open?: false,
       chat_search_term: "",
       chat_search_match_index: nil,

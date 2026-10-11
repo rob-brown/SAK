@@ -215,7 +215,15 @@ defmodule Sak.Chat do
   end
 
   defp message_item(%{"role" => "assistant", "content" => content} = message, id) do
-    [%{id: id, role: :assistant, blocks: blocks(content), error: message["errorMessage"]}]
+    [
+      %{
+        id: id,
+        role: :assistant,
+        blocks: blocks(content),
+        error: message["errorMessage"],
+        stats: assistant_stats(message)
+      }
+    ]
   end
 
   defp message_item(%{"role" => "toolResult"} = message, id) do
@@ -230,7 +238,8 @@ defmodule Sak.Chat do
       error?: message["isError"] == true
     }
 
-    [%{id: id, role: :tool_result, blocks: [block]}]
+    stats = %{kind: :tool, name: message["toolName"], ms: message["durationMs"]}
+    [%{id: id, role: :tool_result, blocks: [block], stats: stats}]
   end
 
   defp message_item(%{"role" => "system", "sections" => sections}, id) when is_map(sections) do
@@ -245,6 +254,18 @@ defmodule Sak.Chat do
   end
 
   defp user_item(id, text), do: %{id: id, role: :user, blocks: blocks(text)}
+
+  defp assistant_stats(message) do
+    usage = message["usage"] || %{}
+
+    %{
+      kind: :model,
+      ms: message["durationMs"],
+      input: usage["input"],
+      output: usage["output"],
+      cache_read: usage["cacheRead"]
+    }
+  end
 
   defp suggestion_block(name, confidence) do
     percent = confidence |> String.to_float() |> Kernel.*(100) |> round()

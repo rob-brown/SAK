@@ -15,6 +15,7 @@ defmodule SakWeb.ChatLive.Events do
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
   alias SakWeb.ChatLive.Subagents
+  alias SakWeb.ChatLive.UsagePanel
 
   def handle("wizard_query", %{"query" => query}, socket) do
     NewSession.set_query(socket, query)
@@ -82,6 +83,10 @@ defmodule SakWeb.ChatLive.Events do
 
   def handle("sessions_filter_confirm", _params, socket) do
     Sessions.confirm_filter(socket)
+  end
+
+  def handle("close_usage", _params, socket) do
+    UsagePanel.close(socket)
   end
 
   def handle("mode_pick_index", %{"index" => index}, socket) do

@@ -26,6 +26,10 @@ defmodule Sak.Command do
         description: "Choose when this session asks before running tools"
       },
       %__MODULE__{
+        name: "usage",
+        description: "Show tokens, time and cost for this session"
+      },
+      %__MODULE__{
         name: "clear",
         aliases: ["new"],
         description: "Reset the conversation to a fresh session"

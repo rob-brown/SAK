@@ -31,6 +31,11 @@ test("the permission mode picker is a modal that forwards navigation, enter and 
   assert.deepEqual(modalKeys({modePickerOpen: "true"}), ["escape", "enter", "up", "down", "j", "k"])
 })
 
+test("the usage panel is a modal that only needs escape", () => {
+  assert.equal(isModalOpen({usageOpen: "true"}), true)
+  assert.deepEqual(modalKeys({usageOpen: "true"}), ["escape"])
+})
+
 test("the chat pane scrolls natively on the chat tab and hands keys to the server on the entries tab", () => {
   // Arrange
   const chat = {focusedPane: "chat_history", chatTab: "chat"}

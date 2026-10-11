@@ -167,6 +167,31 @@ defmodule Sak.ChatTest do
       assert second =~ "Judge, permission:"
     end
 
+    test "assistant replies and tool results carry the time and token stats from the history" do
+      # Arrange
+      assistant =
+        assistant_entry(5, [%{"type" => "text", "text" => "hi"}])
+        |> update_in(["model", Access.at(0)], fn message ->
+          Map.merge(message, %{
+            "durationMs" => 900,
+            "usage" => %{"input" => 10, "output" => 3, "cacheRead" => 7}
+          })
+        end)
+
+      result =
+        tool_result_entry(6, "bash", "out", false)
+        |> update_in(["model", Access.at(0)], &Map.put(&1, "durationMs", 45))
+
+      # Act
+      chat = Chat.from_snapshot(%{"entries" => [assistant, result]})
+
+      # Assert
+      assert [
+               %{stats: %{kind: :model, ms: 900, input: 10, output: 3, cache_read: 7}},
+               %{stats: %{kind: :tool, name: "bash", ms: 45}}
+             ] = Chat.items(chat)
+    end
+
     test "restores the in-flight assistant message from the generation field" do
       # Arrange
       snapshot = %{

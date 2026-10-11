@@ -174,6 +174,68 @@ defmodule SakWeb.Overlays do
     """
   end
 
+  attr :usage, :map, required: true
+
+  def usage(assigns) do
+    ~H"""
+    <.overlay id="usage-overlay">
+      <div class="px-3 py-2 border-b border-neutral-800 flex items-center justify-between shrink-0">
+        <span class="font-semibold">Usage — session {@usage.id}</span>
+        <button phx-click="close_usage" class="text-neutral-400 hover:text-neutral-100">esc</button>
+      </div>
+
+      <dl id="usage-totals" class="px-3 py-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs shrink-0">
+        <dt class="text-neutral-500">tokens</dt>
+        <dd>{Sak.Usage.tokens(@usage.summary.tokens)}</dd>
+        <dt class="text-neutral-500">model time</dt>
+        <dd>{Sak.Usage.duration(@usage.summary.model_ms)}</dd>
+        <dt class="text-neutral-500">tool time</dt>
+        <dd>{Sak.Usage.duration(@usage.summary.tool_ms)}</dd>
+        <dt class="text-neutral-500">cost</dt>
+        <dd>{Sak.Usage.cost(@usage.summary.cost)}</dd>
+      </dl>
+
+      <div class="overflow-y-auto border-t border-neutral-800 text-xs">
+        <p
+          :if={@usage.summary.models == %{}}
+          id="usage-empty"
+          class="px-3 py-3 text-neutral-500"
+        >
+          no model replies yet
+        </p>
+        <div
+          :for={{name, model} <- Enum.sort(@usage.summary.models)}
+          id={"usage-model-#{name}"}
+          class="px-3 py-2 border-b border-neutral-800"
+        >
+          <p class="text-neutral-100 truncate">{name}</p>
+          <p class="text-neutral-400">
+            {model.turns} {if model.turns == 1, do: "reply", else: "replies"} · {Sak.Usage.duration(
+              model.ms
+            )} · {Sak.Usage.tokens(model.input)} in · {Sak.Usage.tokens(model.output)} out
+            <span :if={model.cache_read > 0}>· {Sak.Usage.tokens(model.cache_read)} cached</span>
+            <span :if={model.cost > 0}>· {Sak.Usage.cost(model.cost)}</span>
+          </p>
+        </div>
+        <div
+          :for={{name, tool} <- Enum.sort(@usage.summary.tools)}
+          id={"usage-tool-#{name}"}
+          class="px-3 py-1 flex justify-between text-neutral-400"
+        >
+          <span>{name}</span>
+          <span>{tool.calls} {if tool.calls == 1, do: "call", else: "calls"} · {Sak.Usage.duration(
+            tool.ms
+          )}</span>
+        </div>
+      </div>
+
+      <p class="px-3 py-2 border-t border-neutral-800 text-xs text-neutral-500 shrink-0">
+        esc close · this session only; subagents are separate sessions
+      </p>
+    </.overlay>
+    """
+  end
+
   slot :inner_block, required: true
   attr :id, :string, required: true
 

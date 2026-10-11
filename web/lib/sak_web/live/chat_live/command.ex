@@ -7,6 +7,7 @@ defmodule SakWeb.ChatLive.Command do
   alias SakWeb.ChatLive.Models
   alias SakWeb.ChatLive.PermissionMode
   alias SakWeb.ChatLive.Sessions
+  alias SakWeb.ChatLive.UsagePanel
 
   def open(socket) do
     socket |> Component.assign(command_open?: true) |> query("")
@@ -48,6 +49,10 @@ defmodule SakWeb.ChatLive.Command do
 
   defp execute(socket, %Command{name: "model"}) do
     Models.open(socket)
+  end
+
+  defp execute(socket, %Command{name: "usage"}) do
+    UsagePanel.open(socket)
   end
 
   defp execute(socket, %Command{name: "permissions"}) do

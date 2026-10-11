@@ -18,6 +18,7 @@ defmodule SakWeb.ChatLive.Keys do
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
   alias SakWeb.ChatLive.Subagents
+  alias SakWeb.ChatLive.UsagePanel
 
   def handle(key, socket) do
     socket = assign(socket, last_notice: "")
@@ -42,6 +43,7 @@ defmodule SakWeb.ChatLive.Keys do
 
   defp modal(%{permissions: [_ | _]}), do: :permission
   defp modal(%{mode_picker: %{}}), do: :mode_picker
+  defp modal(%{usage: %{}}), do: :usage
   defp modal(%{help_open?: true}), do: :help
   defp modal(%{models: %{}}), do: :models
   defp modal(%{new_session: %{}}), do: :wizard
@@ -66,6 +68,7 @@ defmodule SakWeb.ChatLive.Keys do
 
   defp modal_key(:mode_picker, "enter", socket), do: PermissionMode.pick(socket)
   defp modal_key(:mode_picker, "escape", socket), do: PermissionMode.close(socket)
+  defp modal_key(:usage, "escape", socket), do: UsagePanel.close(socket)
 
   defp modal_key(:help, "escape", socket) do
     close_help(socket)
@@ -119,6 +122,10 @@ defmodule SakWeb.ChatLive.Keys do
 
   defp global("t", socket) do
     socket |> update(:thinking_visible?, &(!&1)) |> Items.refresh()
+  end
+
+  defp global("s", socket) do
+    socket |> update(:stats_visible?, &(!&1)) |> Items.refresh()
   end
 
   defp global("o", socket) do
