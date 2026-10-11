@@ -71,13 +71,16 @@ test("quotes around frontmatter values are removed and an oversized description 
 	const second = parseSkill("b/SKILL.md", oversized);
 
 	// Assert
-	assert.deepEqual(first, { skill: { name: "quoted", description: "with quotes", path: "a/SKILL.md" } });
+	assert.deepEqual(first, {
+		skill: { name: "quoted", description: "with quotes", path: "a/SKILL.md", arguments: [] },
+		warning: null,
+	});
 	assert.ok("warning" in second);
 });
 
 test("rendering lists each skill with its location, escapes markup, and is empty without skills", () => {
 	// Arrange
-	const skills = [{ name: "pdf", description: 'Fill <forms> & "more"', path: "/s/pdf/SKILL.md" }];
+	const skills = [{ name: "pdf", description: 'Fill <forms> & "more"', path: "/s/pdf/SKILL.md", arguments: [] }];
 
 	// Act
 	const text = renderSkills(skills);

@@ -17,6 +17,7 @@ defmodule SakWeb.ChatLive.Keys do
   alias SakWeb.ChatLive.PermissionMode
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
+  alias SakWeb.ChatLive.SkillForm
   alias SakWeb.ChatLive.Subagents
   alias SakWeb.ChatLive.UsagePanel
 
@@ -44,6 +45,7 @@ defmodule SakWeb.ChatLive.Keys do
   defp modal(%{permissions: [_ | _]}), do: :permission
   defp modal(%{mode_picker: %{}}), do: :mode_picker
   defp modal(%{usage: %{}}), do: :usage
+  defp modal(%{skill_form: %{}}), do: :skill_form
   defp modal(%{help_open?: true}), do: :help
   defp modal(%{models: %{}}), do: :models
   defp modal(%{new_session: %{}}), do: :wizard
@@ -69,6 +71,9 @@ defmodule SakWeb.ChatLive.Keys do
   defp modal_key(:mode_picker, "enter", socket), do: PermissionMode.pick(socket)
   defp modal_key(:mode_picker, "escape", socket), do: PermissionMode.close(socket)
   defp modal_key(:usage, "escape", socket), do: UsagePanel.close(socket)
+  defp modal_key(:skill_form, "escape", socket), do: SkillForm.cancel(socket)
+  defp modal_key(:skill_form, "[", socket), do: SkillForm.move(socket, -1)
+  defp modal_key(:skill_form, "]", socket), do: SkillForm.move(socket, 1)
 
   defp modal_key(:help, "escape", socket) do
     close_help(socket)

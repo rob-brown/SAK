@@ -185,6 +185,8 @@ defmodule SakWeb.ChatLive do
       new_session: nil,
       confirm: nil,
       mode_picker: nil,
+      skill_commands: [],
+      skill_form: nil,
       permission_mode: nil,
       permissions: [],
       rename: nil,

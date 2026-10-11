@@ -25,6 +25,7 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/sak"
 import topbar from "../vendor/topbar"
 import AutoFocus from "./hooks/auto_focus"
+import SkillForm from "./hooks/skill_form"
 import {ChatScroll} from "./hooks/chat_scroll"
 import CommandInput from "./hooks/command_input"
 import KeyRouter from "./hooks/key_router"
@@ -40,6 +41,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
   hooks: {
     ...colocatedHooks,
     AutoFocus,
+    SkillForm,
     ChatScroll,
     CommandInput,
     KeyRouter,

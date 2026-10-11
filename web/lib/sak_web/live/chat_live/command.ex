@@ -7,18 +7,34 @@ defmodule SakWeb.ChatLive.Command do
   alias SakWeb.ChatLive.Models
   alias SakWeb.ChatLive.PermissionMode
   alias SakWeb.ChatLive.Sessions
+  alias SakWeb.ChatLive.SkillForm
   alias SakWeb.ChatLive.UsagePanel
 
   def open(socket) do
-    socket |> Component.assign(command_open?: true) |> query("")
+    socket
+    |> load_skills()
+    |> Component.assign(command_open?: true)
+    |> query("")
   end
+
+  defp load_skills(%{assigns: %{current_id: id}} = socket) when is_integer(id) do
+    case client().request("list_skills", %{"conversationId" => id}) do
+      {:ok, %{"skills" => skills}} ->
+        Component.assign(socket, skill_commands: Command.from_skills(skills))
+
+      _unavailable ->
+        Component.assign(socket, skill_commands: [])
+    end
+  end
+
+  defp load_skills(socket), do: Component.assign(socket, skill_commands: [])
 
   def query(%{assigns: %{command_open?: false}} = socket, _text), do: socket
 
   def query(socket, text) do
     Component.assign(socket,
       command_query: text,
-      command_results: Command.filter(text),
+      command_results: Command.filter(Command.list() ++ socket.assigns.skill_commands, text),
       command_selected: 0
     )
   end
@@ -45,6 +61,10 @@ defmodule SakWeb.ChatLive.Command do
 
   def run_index(socket, index) do
     socket |> Component.assign(command_selected: index) |> run()
+  end
+
+  defp execute(socket, %Command{kind: :skill, skill: skill}) do
+    SkillForm.open(socket, skill)
   end
 
   defp execute(socket, %Command{name: "model"}) do

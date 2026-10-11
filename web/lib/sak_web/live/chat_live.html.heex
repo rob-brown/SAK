@@ -11,6 +11,7 @@
     data-permission-open={to_string(@permissions != [])}
     data-mode-picker-open={to_string(@mode_picker != nil)}
     data-usage-open={to_string(@usage != nil)}
+    data-skill-form-open={to_string(@skill_form != nil)}
     data-subagent-viewing={to_string(@viewed != nil)}
     data-rename-open={to_string(@rename != nil)}
     data-command-open={to_string(@command_open?)}
@@ -430,6 +431,7 @@
     <.confirm :if={@confirm} confirm={@confirm} />
     <.mode_picker :if={@mode_picker} picker={@mode_picker} />
     <.usage :if={@usage} usage={@usage} />
+    <.skill_form :if={@skill_form} form={@skill_form} />
     <.permission
       :if={@permissions != []}
       request={hd(@permissions)}

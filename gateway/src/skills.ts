@@ -2,6 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { splitFrontmatter } from "./frontmatter.ts";
 import { directoriesFromRoot } from "./project-instructions.ts";
+import { parseArguments, type SkillArgument } from "./skill-arguments.ts";
 
 export const SKILL_FILE = "SKILL.md";
 export const MAX_NAME_CHARS = 64;
@@ -13,6 +14,7 @@ export type Skill = {
 	readonly name: string;
 	readonly description: string;
 	readonly path: string;
+	readonly arguments: readonly SkillArgument[];
 };
 
 export type SkillDiscovery = {
@@ -20,7 +22,7 @@ export type SkillDiscovery = {
 	readonly warnings: readonly string[];
 };
 
-type Parsed = { readonly skill: Skill } | { readonly warning: string };
+type Parsed = { readonly skill: Skill; readonly warning: string | null } | { readonly warning: string };
 
 export async function discoverSkills(cwd: string, configDir: string): Promise<SkillDiscovery> {
 	const projectRoots = (await directoriesFromRoot(cwd)).map((directory) => join(directory, ".agents", "skills"));
@@ -48,7 +50,9 @@ export function parseSkill(path: string, text: string): Parsed {
 	if (description.length > MAX_DESCRIPTION_CHARS) {
 		return { warning: `${path}: description over ${MAX_DESCRIPTION_CHARS} characters` };
 	}
-	return { skill: { name, description, path } };
+	const parsed = parseArguments(fields);
+	const warning = parsed.warning === null ? null : `${path}: ${parsed.warning}`;
+	return { skill: { name, description, path, arguments: parsed.arguments }, warning };
 }
 
 export function renderSkills(skills: readonly Skill[]): string | undefined {
@@ -71,7 +75,7 @@ async function readSkillRoot(root: string): Promise<{ skills: Skill[]; warnings:
 		if (text === undefined) continue;
 		const parsed = parseSkill(path, text);
 		if ("skill" in parsed) skills.push(parsed.skill);
-		else warnings.push(parsed.warning);
+		if (parsed.warning) warnings.push(parsed.warning);
 	}
 	return { skills, warnings };
 }

@@ -62,6 +62,7 @@ export async function setup(
 		...(authorizer ? { authorizer } : {}),
 		...(broker ? { broker } : {}),
 		...(shared && internal?.suggestSkills ? { suggestions: { ...shared, configDir } } : {}),
+		configDir,
 		cwd: process.cwd(),
 		personasDir,
 		ensureModel: async (modelId) => {

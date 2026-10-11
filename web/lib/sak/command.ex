@@ -2,13 +2,15 @@ defmodule Sak.Command do
   alias Sak.FuzzyMatch
 
   @enforce_keys [:name, :description]
-  defstruct [:name, :description, aliases: [], inputs: []]
+  defstruct [:name, :description, aliases: [], inputs: [], kind: :builtin, skill: nil]
 
   @type t :: %__MODULE__{
           name: String.t(),
           description: String.t(),
           aliases: [String.t()],
-          inputs: [map()]
+          inputs: [map()],
+          kind: :builtin | :skill,
+          skill: map() | nil
         }
 
   @min_filter_length 2
@@ -36,6 +38,27 @@ defmodule Sak.Command do
       }
     ]
   end
+
+  @description_limit 90
+
+  @spec from_skills([map()]) :: [t()]
+  def from_skills(skills) do
+    Enum.map(skills, fn skill ->
+      %__MODULE__{
+        name: "skill:" <> skill["name"],
+        description: "Skill: " <> clip(skill["description"]),
+        inputs: Map.get(skill, "arguments", []),
+        kind: :skill,
+        skill: skill
+      }
+    end)
+  end
+
+  defp clip(text) when byte_size(text) > @description_limit do
+    String.slice(text, 0, @description_limit) <> "…"
+  end
+
+  defp clip(text), do: text
 
   @spec filter([t()], String.t()) :: [t()]
   def filter(commands \\ list(), query)

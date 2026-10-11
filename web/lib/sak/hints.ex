@@ -4,17 +4,46 @@ defmodule Sak.Hints do
   @spec for_assigns(map()) :: [hint()]
   def for_assigns(assigns) do
     cond do
-      assigns.permissions != [] -> [{"Allow", "y"}, {"Allow for session", "a"}, {"Deny", "n"}]
-      assigns.mode_picker != nil -> [{"Apply", "<enter>"}, {"Cancel", "<esc>"}]
-      assigns.help_open? -> [{"Close", "<esc>"}]
-      assigns.models != nil -> [{"Close", "<esc>"}]
-      assigns.confirm != nil -> [{"Confirm", "<enter>"}, {"Cancel", "<esc>"}]
-      assigns.rename != nil -> []
-      assigns.sessions_filter_open? -> []
-      assigns.new_session != nil -> []
-      assigns.command_open? -> []
-      assigns.chat_search_open? -> []
-      true -> pane(assigns)
+      assigns.skill_form != nil ->
+        [
+          {"Next field", "]"},
+          {"Previous", "["},
+          {"Run", "<enter> on the last"},
+          {"Cancel", "<esc>"}
+        ]
+
+      assigns.permissions != [] ->
+        [{"Allow", "y"}, {"Allow for session", "a"}, {"Deny", "n"}]
+
+      assigns.mode_picker != nil ->
+        [{"Apply", "<enter>"}, {"Cancel", "<esc>"}]
+
+      assigns.help_open? ->
+        [{"Close", "<esc>"}]
+
+      assigns.models != nil ->
+        [{"Close", "<esc>"}]
+
+      assigns.confirm != nil ->
+        [{"Confirm", "<enter>"}, {"Cancel", "<esc>"}]
+
+      assigns.rename != nil ->
+        []
+
+      assigns.sessions_filter_open? ->
+        []
+
+      assigns.new_session != nil ->
+        []
+
+      assigns.command_open? ->
+        []
+
+      assigns.chat_search_open? ->
+        []
+
+      true ->
+        pane(assigns)
     end
   end
 

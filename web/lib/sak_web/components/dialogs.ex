@@ -35,6 +35,65 @@ defmodule SakWeb.Dialogs do
     """
   end
 
+  attr :form, :map, required: true
+
+  def skill_form(assigns) do
+    ~H"""
+    <div
+      id="skill-form-overlay"
+      class="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-20"
+    >
+      <form
+        id="skill-form"
+        phx-hook="SkillForm"
+        phx-change="skill_change"
+        phx-submit="skill_submit"
+        class="bg-neutral-900 border border-neutral-700 rounded-md w-[40rem] max-h-[75vh] flex flex-col"
+      >
+        <div class="px-3 py-2 border-b border-neutral-800 shrink-0">
+          <p class="font-semibold">Skill: {@form.skill["name"]}</p>
+          <p class="text-xs text-neutral-500">{@form.skill["description"]}</p>
+        </div>
+        <div class="overflow-y-auto px-3 py-2 space-y-3">
+          <div :for={{field, index} <- Enum.with_index(@form.fields)} id={"skill-field-#{field.name}"}>
+            <label for={"skill-arg-#{field.name}"} class="text-xs text-neutral-400">
+              {field.name}{if field.required?, do: " *"}
+              <span :if={field.description} class="text-neutral-600">— {field.description}</span>
+            </label>
+            <input
+              id={"skill-arg-#{field.name}"}
+              type="text"
+              name={"values[#{field.name}]"}
+              value={field.value}
+              data-current={to_string(index == @form.index)}
+              autocomplete="off"
+              class={[
+                "w-full bg-neutral-950 text-neutral-100 px-2 py-1 outline-none border rounded",
+                index == @form.index && "border-neutral-400",
+                index != @form.index && "border-neutral-800"
+              ]}
+            />
+          </div>
+        </div>
+        <p :if={@form.error} id="skill-form-error" class="px-3 pb-1 text-xs text-red-400">
+          {@form.error}
+        </p>
+        <div class="px-3 py-2 border-t border-neutral-800 text-xs text-neutral-500 flex items-center gap-4 shrink-0">
+          <span>[ ] switch field · enter next, or run on the last · ctrl-enter run now · esc cancel</span>
+          <button
+            id="skill-run"
+            type="button"
+            phx-click="skill_run"
+            class="ml-auto text-green-400 hover:text-neutral-100"
+          >
+            run
+          </button>
+        </div>
+      </form>
+    </div>
+    """
+  end
+
   attr :picker, :map, required: true
 
   def mode_picker(assigns) do

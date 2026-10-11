@@ -14,6 +14,7 @@ defmodule SakWeb.ChatLive.Events do
   alias SakWeb.ChatLive.PermissionMode
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
+  alias SakWeb.ChatLive.SkillForm
   alias SakWeb.ChatLive.Subagents
   alias SakWeb.ChatLive.UsagePanel
 
@@ -83,6 +84,26 @@ defmodule SakWeb.ChatLive.Events do
 
   def handle("sessions_filter_confirm", _params, socket) do
     Sessions.confirm_filter(socket)
+  end
+
+  def handle("skill_change", %{"values" => values}, socket) do
+    SkillForm.change(socket, values)
+  end
+
+  def handle("skill_submit", %{"values" => values}, socket) do
+    SkillForm.submit(socket, values)
+  end
+
+  def handle("skill_field", %{"delta" => delta}, socket) do
+    SkillForm.move(socket, delta)
+  end
+
+  def handle("skill_run", _params, socket) do
+    SkillForm.run(socket)
+  end
+
+  def handle("skill_cancel", _params, socket) do
+    SkillForm.cancel(socket)
   end
 
   def handle("close_usage", _params, socket) do

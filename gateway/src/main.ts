@@ -63,6 +63,7 @@ live.harness = harness;
 const gateway = new Gateway({
 	authorizer,
 	broker,
+	configDir: config.configDir,
 	cwd: config.cwd,
 	ensureModel: (modelId) => catalog.ensure(modelId),
 	harness,

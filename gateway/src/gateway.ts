@@ -17,6 +17,7 @@ import { type Approval, APPROVALS, type PermissionBroker } from "./permissions/b
 import { type Mode, MODES } from "./permissions/rules.ts";
 import { DEFAULT_PERSONA_NAME, findPersona, loadPersonas } from "./personas.ts";
 import type { Command, ConversationSummary, Outgoing, SubagentSummary } from "./protocol.ts";
+import { discoverSkills } from "./skills.ts";
 import { toolsNamed } from "./tools.ts";
 
 const context = BACKGROUND_CONTEXT;
@@ -25,6 +26,7 @@ const LIST_LIMIT = 500;
 export type GatewayOptions = {
 	readonly authorizer?: Authorizer;
 	readonly broker?: PermissionBroker;
+	readonly configDir: string;
 	readonly cwd: string;
 	readonly ensureModel: (modelId: string) => Promise<void>;
 	readonly harness: Harness;
@@ -79,6 +81,8 @@ export class Gateway {
 				return this.personas();
 			case "list_models":
 				return this.models();
+			case "list_skills":
+				return this.skills(command.conversationId);
 			case "list_subagents":
 				return this.subagents(command.conversationId);
 			case "permission_mode":
@@ -92,6 +96,14 @@ export class Gateway {
 			case "submit":
 				return this.submit(command);
 		}
+	}
+
+	private async skills(conversationId: number) {
+		const conversation = await this.conversation(conversationId);
+		const agent = await conversation.agent(context);
+		if (!agent.tools.some((tool) => tool.name === "read")) return { skills: [] };
+		const { skills } = await discoverSkills(agent.cwd ?? this.options.cwd, this.options.configDir);
+		return { skills };
 	}
 
 	private async subagents(conversationId: number) {
