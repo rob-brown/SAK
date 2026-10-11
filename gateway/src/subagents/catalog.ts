@@ -8,7 +8,7 @@ export const DESCRIPTION = [
 	"Delegate self-contained tasks to subagents. Each prompt runs in its own fresh conversation, which sees none of this one, so include everything it needs.",
 	"A limited number of subagents run at once and the rest wait their turn.",
 	"Returns a JSON array of strings, one answer per prompt in the same order; a prompt that failed gives a string starting with 'Error:'.",
-	"Optional persona selects how every subagent in this call behaves.",
+	"Optional persona applies to every subagent in this call. Leave it out and a fitting persona may be chosen for each prompt, falling back to the default.",
 ].join("\n");
 
 export const PARAMETERS = Type.Object({

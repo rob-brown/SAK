@@ -25,14 +25,21 @@ const send = (message: Outgoing) => {
 	process.stdout.write(`${JSON.stringify(message)}\n`);
 };
 
+const judge = config.judge.enabled ? new JudgeClient(config.judge) : undefined;
+const internal = judge ? { client: judge, minConfidence: config.judge.minConfidence } : undefined;
+
 const broker = new PermissionBroker(send);
 const authorizer = new Authorizer(config.permissions, broker, rootConversation(storage));
 const harness = await openHarness(storage, catalog.models, {
 	authorizer,
 	configDir: config.configDir,
 	instructionMaxChars: config.instructionMaxChars,
-	...(config.judge.enabled ? { judge: new JudgeClient(config.judge) } : {}),
-	subagents: { personasDir: config.personasDir, semaphore: new Semaphore(config.subagentLimit) },
+	...(judge ? { judge } : {}),
+	subagents: {
+		personasDir: config.personasDir,
+		semaphore: new Semaphore(config.subagentLimit),
+		...(internal && config.judge.pickPersonas ? { judge: internal } : {}),
+	},
 });
 
 const gateway = new Gateway({
@@ -46,6 +53,7 @@ const gateway = new Gateway({
 	personasDir: config.personasDir,
 	send,
 	storage,
+	...(internal && config.judge.suggestSkills ? { suggestions: { ...internal, configDir: config.configDir } } : {}),
 });
 
 const lines = createInterface({ input: process.stdin });

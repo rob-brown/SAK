@@ -126,11 +126,13 @@ test("the judge is off by default, targets a local ollaya server, and the key co
 	const overridden = await loadConfig({ SAK_CONFIG_DIR: filed, SAK_JUDGE_URL: "http://other:1", SAK_JUDGE_MODEL: "m" });
 
 	// Assert
+	const internal = { minConfidence: 0.7, pickPersonas: true, suggestSkills: true };
 	assert.deepEqual(defaults.judge, {
 		enabled: false,
 		baseUrl: "http://localhost:11435",
 		model: "winnow:e4b",
 		timeoutMs: 30_000,
+		...internal,
 	});
 	assert.deepEqual(fromFile.judge, {
 		enabled: true,
@@ -138,9 +140,31 @@ test("the judge is off by default, targets a local ollaya server, and the key co
 		model: "jev-latest",
 		timeoutMs: 5000,
 		apiKey: "from-env",
+		...internal,
 	});
 	assert.match(fromFile.warnings.join("\n"), /unknown key judge\.api_key/);
 	assert.deepEqual([overridden.judge.baseUrl, overridden.judge.model, overridden.judge.apiKey], ["http://other:1", "m", undefined]);
+});
+
+test("the internal judge uses can be switched off and the confidence bar raised, within 0 to 1", async () => {
+	// Arrange
+	const tuned = await configDirWith("[judge]\npick_personas = false\nsuggest_skills = false\nmin_confidence = 0.9\n");
+	const zero = await configDirWith("[judge]\nmin_confidence = 0\n");
+	const high = await configDirWith("[judge]\nmin_confidence = 1.5\n");
+
+	// Act
+	const config = await loadConfig({ SAK_CONFIG_DIR: tuned });
+	const rejected = await Promise.allSettled([loadConfig({ SAK_CONFIG_DIR: zero }), loadConfig({ SAK_CONFIG_DIR: high })]);
+
+	// Assert
+	assert.deepEqual(
+		[config.judge.pickPersonas, config.judge.suggestSkills, config.judge.minConfidence],
+		[false, false, 0.9],
+	);
+	assert.deepEqual(
+		rejected.map((result) => result.status),
+		["rejected", "rejected"],
+	);
 });
 
 test("a judge flag that is not true or false stops the load", async () => {

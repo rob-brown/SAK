@@ -1,37 +1,13 @@
 import assert from "node:assert/strict";
-import { createServer, type IncomingMessage, type Server } from "node:http";
+import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { test } from "node:test";
 import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
 import { JudgeClient } from "../src/judge/client.ts";
+import { fakeServer } from "./fake-judge.ts";
 import { hasEvent, reply, setup, waitFor } from "./support.ts";
 
-type Seen = { method?: string; url?: string; authorization?: string; body: Record<string, unknown> };
-type Handler = (seen: Seen, count: number) => { status: number; body: unknown };
-
 const CANNED = { model: "winnow:e4b", answers: { intent: { type: "choice", choice: "invoice", confidence: 0.98 } } };
-
-async function fakeServer(handler: Handler) {
-	const seen: Seen[] = [];
-	const server: Server = createServer(async (request: IncomingMessage, response) => {
-		const chunks: Buffer[] = [];
-		for await (const chunk of request) chunks.push(chunk as Buffer);
-		const entry: Seen = {
-			method: request.method,
-			url: request.url,
-			authorization: request.headers.authorization,
-			body: JSON.parse(Buffer.concat(chunks).toString() || "{}"),
-		};
-		seen.push(entry);
-		const { status, body } = handler(entry, seen.length);
-		response.writeHead(status, { "content-type": "application/json" });
-		response.end(typeof body === "string" ? body : JSON.stringify(body));
-	});
-	await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-	const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-	const close = () => new Promise<void>((resolve) => server.close(() => resolve()));
-	return { seen, url, close };
-}
 
 const QUESTIONS = {
 	intent: { type: "choice", instructions: "What does the customer want?", criteria: { invoice: "an invoice", other: "anything else" } },

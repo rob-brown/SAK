@@ -15,7 +15,13 @@ import type { Policy } from "../src/permissions/rules.ts";
 import type { Outgoing } from "../src/protocol.ts";
 import { Semaphore } from "../src/subagents/semaphore.ts";
 
-export async function setup(policy?: Policy, subagentLimit?: number, judge?: JudgeClient) {
+export type Internal = {
+	readonly minConfidence?: number;
+	readonly pickPersonas?: boolean;
+	readonly suggestSkills?: boolean;
+};
+
+export async function setup(policy?: Policy, subagentLimit?: number, judge?: JudgeClient, internal?: Internal) {
 	const faux = fauxProvider();
 	const models = createModels();
 	models.setProvider(faux.provider);
@@ -26,7 +32,14 @@ export async function setup(policy?: Policy, subagentLimit?: number, judge?: Jud
 	const send = (message: Outgoing) => outgoing.push(message);
 	const broker = policy ? new PermissionBroker(send) : undefined;
 	const authorizer = policy && broker ? new Authorizer(policy, broker, rootConversation(storage)) : undefined;
-	const subagents = subagentLimit ? { personasDir, semaphore: new Semaphore(subagentLimit) } : undefined;
+	const shared = judge ? { client: judge, minConfidence: internal?.minConfidence ?? 0.8 } : undefined;
+	const subagents = subagentLimit
+		? {
+				personasDir,
+				semaphore: new Semaphore(subagentLimit),
+				...(shared && internal?.pickPersonas ? { judge: shared } : {}),
+			}
+		: undefined;
 	const harness = await openHarness(storage, models, {
 		configDir,
 		...(authorizer ? { authorizer } : {}),
@@ -38,6 +51,7 @@ export async function setup(policy?: Policy, subagentLimit?: number, judge?: Jud
 	const gateway = new Gateway({
 		...(authorizer ? { authorizer } : {}),
 		...(broker ? { broker } : {}),
+		...(shared && internal?.suggestSkills ? { suggestions: { ...shared, configDir } } : {}),
 		cwd: process.cwd(),
 		personasDir,
 		ensureModel: async (modelId) => {

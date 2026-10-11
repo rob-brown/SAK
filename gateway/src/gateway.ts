@@ -9,6 +9,7 @@ import {
 	type Storage,
 	watchEvents,
 } from "@earendil-works/pi-durable";
+import { type SuggestionDeps, suggestSkill } from "./judge/suggest.ts";
 import { readMeta, STATES, writeMeta } from "./meta.ts";
 import type { Authorizer } from "./permissions/authorizer.ts";
 import { type Approval, APPROVALS, type PermissionBroker } from "./permissions/broker.ts";
@@ -31,6 +32,7 @@ export type GatewayOptions = {
 	readonly personasDir: string;
 	readonly send: (message: Outgoing) => void;
 	readonly storage: Storage;
+	readonly suggestions?: SuggestionDeps;
 };
 
 export class Gateway {
@@ -220,12 +222,20 @@ export class Gateway {
 		return { conversations: summaries.filter((summary) => summary.state !== "deleted") };
 	}
 
+	private async suggested(conversation: Conversation, content: string): Promise<string> {
+		const suggestions = this.options.suggestions;
+		if (suggestions === undefined) return content;
+		const agent = await conversation.agent(context);
+		if (!agent.tools.some((tool) => tool.name === "read")) return content;
+		return (await suggestSkill(suggestions, content, agent.cwd ?? this.options.cwd)) ?? content;
+	}
+
 	private async submit(command: Extract<Command, { type: "submit" }>) {
 		const conversation = await this.conversation(command.conversationId);
 		const submission = await conversation.submit(
 			{
 				type: "input",
-				content: command.content,
+				content: await this.suggested(conversation, command.content),
 				whenBusy: command.whenBusy,
 				requestId: command.requestId,
 			},

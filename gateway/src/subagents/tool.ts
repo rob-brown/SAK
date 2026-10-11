@@ -10,9 +10,11 @@ import {
 	type Tx,
 } from "@earendil-works/pi-durable";
 import { seedMeta } from "../meta.ts";
-import { DEFAULT_PERSONA_NAME, findPersona, type Persona } from "../personas.ts";
+import type { InternalJudge } from "../judge/internal.ts";
+import { findPersona, type Persona } from "../personas.ts";
 import { toolsNamed } from "../tools.ts";
 import { AGENT, DESCRIPTION, PARAMETERS } from "./catalog.ts";
+import { personasFor } from "./select.ts";
 import type { Semaphore } from "./semaphore.ts";
 
 const NAME_CHARS = 80;
@@ -21,11 +23,12 @@ type Context = Parameters<ToolExecutionApi["agent"]>[0];
 type Block = { readonly type: string; readonly text?: string };
 
 export type SubagentDeps = {
+	readonly judge?: InternalJudge;
 	readonly personasDir: string;
 	readonly semaphore: Semaphore;
 };
 
-export function subagentExtension({ personasDir, semaphore }: SubagentDeps) {
+export function subagentExtension({ judge, personasDir, semaphore }: SubagentDeps) {
 	const occurrences = new Map<string, number>();
 
 	const tool = defineTool({
@@ -35,15 +38,24 @@ export function subagentExtension({ personasDir, semaphore }: SubagentDeps) {
 		replay: "safe",
 		executionMode: "sequential",
 		execute: async (args, api, context) => {
-			const persona = await findPersona(personasDir, args.persona ?? DEFAULT_PERSONA_NAME).catch(
-				(error: unknown) => error as Error,
-			);
-			if (persona instanceof Error) return failure(persona.message);
+			const explicit = args.persona
+				? await findPersona(personasDir, args.persona).catch((error: unknown) => error as Error)
+				: undefined;
+			if (explicit instanceof Error) return failure(explicit.message);
 			const parent = await api.agent(context);
-			const keys = args.prompts.map((prompt) => nextKey(occurrences, api.taskId, prompt, persona.name));
+			const keys = args.prompts.map((prompt) => nextKey(occurrences, api.taskId, prompt, args.persona ?? ""));
+			const personas = await personasFor({ api, context, explicit, judge, keys, personasDir, prompts: args.prompts });
 			const answers = await Promise.all(
 				args.prompts.map((prompt, index) =>
-					semaphore.run(() => runChild(api, context, { prompt, key: keys[index] as string, persona, parent, extension })),
+					semaphore.run(() =>
+						runChild(api, context, {
+							prompt,
+							key: keys[index] as string,
+							persona: personas[index] as Persona,
+							parent,
+							extension,
+						}),
+					),
 				),
 			);
 			return { content: [{ type: "text", text: JSON.stringify(answers) }] };

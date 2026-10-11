@@ -114,6 +114,24 @@ defmodule Sak.ChatTest do
       assert summary == "Loaded skills:\n\n- `pdf`\n- `sql`"
     end
 
+    test "a skill suggestion in front of a user message becomes its own muted item" do
+      # Arrange
+      text =
+        ~s(<skill-suggestion name="pdf" confidence="0.93">A decision model judged that the "pdf" skill fits.</skill-suggestion>\n\nfill in this form)
+
+      # Act
+      chat = Chat.from_snapshot(%{"entries" => [user_entry(5, text), user_entry(6, "plain")]})
+
+      # Assert
+      assert [
+               %{role: :system, blocks: [%{type: :context, text: hint}]},
+               %{role: :user, blocks: [%{text: "fill in this form"}]},
+               %{role: :user, blocks: [%{text: "plain"}]}
+             ] = Chat.items(chat)
+
+      assert hint == "Suggested skill: `pdf` (93% sure)"
+    end
+
     test "restores the in-flight assistant message from the generation field" do
       # Arrange
       snapshot = %{

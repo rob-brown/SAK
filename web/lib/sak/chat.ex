@@ -17,6 +17,7 @@ defmodule Sak.Chat do
             failure: nil
 
   @live_id "live"
+  @suggestion ~r/\A<skill-suggestion name="([^"]+)" confidence="(\d\.\d+)">.*?<\/skill-suggestion>\n\n/s
 
   def live_id, do: @live_id
 
@@ -181,6 +182,17 @@ defmodule Sak.Chat do
     []
   end
 
+  defp message_item(%{"role" => "user", "content" => content}, id) when is_binary(content) do
+    case Regex.run(@suggestion, content) do
+      [whole, name, confidence] ->
+        hint = %{id: id <> "-hint", role: :system, blocks: [suggestion_block(name, confidence)]}
+        [hint, user_item(id, String.replace_prefix(content, whole, ""))]
+
+      nil ->
+        [user_item(id, content)]
+    end
+  end
+
   defp message_item(%{"role" => "user", "content" => content}, id) do
     [%{id: id, role: :user, blocks: blocks(content)}]
   end
@@ -213,6 +225,13 @@ defmodule Sak.Chat do
 
   defp message_item(_message, _id) do
     []
+  end
+
+  defp user_item(id, text), do: %{id: id, role: :user, blocks: blocks(text)}
+
+  defp suggestion_block(name, confidence) do
+    percent = confidence |> String.to_float() |> Kernel.*(100) |> round()
+    %{type: :context, text: "Suggested skill: `#{name}` (#{percent}% sure)"}
   end
 
   defp context_summary(sections) do

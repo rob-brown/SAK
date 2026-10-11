@@ -15,7 +15,12 @@ export type Config = {
 	readonly cwd: string;
 	readonly dbPath: string;
 	readonly instructionMaxChars: number;
-	readonly judge: JudgeSettings & { readonly enabled: boolean };
+	readonly judge: JudgeSettings & {
+		readonly enabled: boolean;
+		readonly minConfidence: number;
+		readonly pickPersonas: boolean;
+		readonly suggestSkills: boolean;
+	};
 	readonly modelId: string;
 	readonly permissions: Policy;
 	readonly personasDir: string;
@@ -23,14 +28,22 @@ export type Config = {
 	readonly warnings: readonly string[];
 };
 
-type Kind = "count" | "flag" | "list" | "mode" | "text";
+type Kind = "count" | "flag" | "list" | "mode" | "ratio" | "text";
 type Value = boolean | number | string | string[];
 type Values = ReadonlyMap<string, Value>;
 
 const SCHEMA: Readonly<Record<string, Readonly<Record<string, Kind>>>> = {
 	endpoint: { base_url: "text", model: "text" },
 	instructions: { max_file_chars: "count" },
-	judge: { base_url: "text", enabled: "flag", model: "text", timeout_ms: "count" },
+	judge: {
+		base_url: "text",
+		enabled: "flag",
+		min_confidence: "ratio",
+		model: "text",
+		pick_personas: "flag",
+		suggest_skills: "flag",
+		timeout_ms: "count",
+	},
 	permissions: { allow: "list", ask: "list", deny: "list", mode: "mode" },
 	storage: { db: "text" },
 	subagents: { max_concurrent: "count" },
@@ -40,6 +53,7 @@ export const DEFAULT_SUBAGENT_LIMIT = 6;
 export const DEFAULT_JUDGE_URL = "http://localhost:11435";
 export const DEFAULT_JUDGE_MODEL = "winnow:e4b";
 export const DEFAULT_JUDGE_TIMEOUT_MS = 30_000;
+export const DEFAULT_JUDGE_CONFIDENCE = 0.7;
 
 export async function loadConfig(env: NodeJS.ProcessEnv): Promise<Config> {
 	const configDir = env.SAK_CONFIG_DIR ?? join(env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "sak");
@@ -54,6 +68,9 @@ export async function loadConfig(env: NodeJS.ProcessEnv): Promise<Config> {
 		instructionMaxChars: count(values, "instructions.max_file_chars") ?? MAX_FILE_CHARS,
 		judge: {
 			enabled: flag(values, "judge.enabled") ?? false,
+			minConfidence: ratio(values, "judge.min_confidence") ?? DEFAULT_JUDGE_CONFIDENCE,
+			pickPersonas: flag(values, "judge.pick_personas") ?? true,
+			suggestSkills: flag(values, "judge.suggest_skills") ?? true,
 			baseUrl: env.SAK_JUDGE_URL ?? text(values, "judge.base_url") ?? DEFAULT_JUDGE_URL,
 			model: env.SAK_JUDGE_MODEL ?? text(values, "judge.model") ?? DEFAULT_JUDGE_MODEL,
 			timeoutMs: count(values, "judge.timeout_ms") ?? DEFAULT_JUDGE_TIMEOUT_MS,
@@ -124,6 +141,7 @@ async function readSettings(path: string) {
 
 function matches(kind: Kind, value: unknown): boolean {
 	if (kind === "flag") return typeof value === "boolean";
+	if (kind === "ratio") return typeof value === "number" && value > 0 && value <= 1;
 	if (kind === "text") return typeof value === "string" && value.trim() !== "";
 	if (kind === "mode") return (MODES as readonly unknown[]).includes(value);
 	if (kind === "list") return Array.isArray(value) && value.every((item) => typeof item === "string" && item.trim() !== "");
@@ -132,10 +150,16 @@ function matches(kind: Kind, value: unknown): boolean {
 
 function describeKind(kind: Kind): string {
 	if (kind === "flag") return "true or false";
+	if (kind === "ratio") return "a number above 0 and at most 1";
 	if (kind === "text") return "a non-empty string";
 	if (kind === "mode") return `one of ${MODES.join(", ")}`;
 	if (kind === "list") return "a list of non-empty strings";
 	return "a positive integer";
+}
+
+function ratio(values: Values, key: string): number | undefined {
+	const value = values.get(key);
+	return typeof value === "number" ? value : undefined;
 }
 
 function flag(values: Values, key: string): boolean | undefined {
