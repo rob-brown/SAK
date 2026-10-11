@@ -96,7 +96,7 @@ defmodule Sak.Keybindings do
       {"t",
        "Show or hide model thinking (reasoning) in the chat history — hidden thinking is not searchable"},
       {"o", "Show or hide full tool call output in the chat history"},
-      {"s", "Show or hide the time and token count under each reply and tool result"},
+      {"i", "Show or hide the time and token count under each reply and tool result"},
       {"scroll up", "Scroll the chat history pane up with the mouse wheel"},
       {"scroll down", "Scroll the chat history pane down with the mouse wheel"}
     ]

@@ -205,7 +205,7 @@
           <span :if={@chat_tab == :chat} class="text-xs text-neutral-600 shrink-0">
             t {if @thinking_visible?, do: "on", else: "off"} · o {if @tool_output_visible?,
               do: "on",
-              else: "off"} · s {if @stats_visible?, do: "on", else: "off"}
+              else: "off"} · i {if @stats_visible?, do: "on", else: "off"}
           </span>
           <span :if={!@gateway_up?} class="text-red-500 font-bold shrink-0">reconnecting…</span>
         </div>

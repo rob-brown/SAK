@@ -75,15 +75,15 @@ defmodule SakWeb.UsageTest do
     view
   end
 
-  test "each reply and tool result shows its time, and s hides and shows them" do
+  test "each reply and tool result shows its time, and i hides and shows them" do
     # Arrange
     view = open_session()
 
     # Act
     shown = render(view)
-    press(view, "s")
+    press(view, "i")
     hidden = render(view)
-    press(view, "s")
+    press(view, "i")
 
     # Assert
     assert shown =~ "2.4 s · 1,200 in · 80 out"

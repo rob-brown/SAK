@@ -129,7 +129,7 @@ defmodule SakWeb.ChatLive.Keys do
     socket |> update(:thinking_visible?, &(!&1)) |> Items.refresh()
   end
 
-  defp global("s", socket) do
+  defp global("i", socket) do
     socket |> update(:stats_visible?, &(!&1)) |> Items.refresh()
   end
 
