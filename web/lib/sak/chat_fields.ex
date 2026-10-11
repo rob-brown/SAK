@@ -55,11 +55,14 @@ defmodule Sak.ChatFields do
   end
 
   defp block_field(%{type: :tool_call} = block, index, _opts) do
-    present(index, :description, describe(block))
+    case formatted_call(block[:name], block[:arguments]) do
+      nil -> present(index, :description, describe(block))
+      text -> present(index, :code_call, text)
+    end
   end
 
-  defp block_field(%{type: :tool_result, text: text}, index, %{tool_output_visible?: true}) do
-    present(index, :tool_content, truncate(text))
+  defp block_field(%{type: :tool_result, text: text} = block, index, %{tool_output_visible?: true}) do
+    present(index, :tool_content, formatted_result(block[:name], text) || truncate(text))
   end
 
   defp block_field(%{type: :tool_result}, _index, _opts), do: []
@@ -120,17 +123,15 @@ defmodule Sak.ChatFields do
     "#{name} #{summarize(arguments)}"
   end
 
-  defp fenced(code) do
-    fence = String.duplicate("`", max(3, longest_backtick_run(code) + 1))
-    fence <> "js\n" <> dedent(code) <> "\n" <> fence
-  end
+  defp fenced(code), do: Sak.Fence.wrap(dedent(code), "js")
 
-  defp longest_backtick_run(text) do
-    ~r/`+/
-    |> Regex.scan(text)
-    |> Enum.map(fn [run] -> String.length(run) end)
-    |> Enum.max(fn -> 0 end)
-  end
+  defp formatted_call("judge", arguments), do: Sak.JudgeFormat.call(arguments)
+  defp formatted_call("agent", arguments), do: Sak.AgentFormat.call(arguments)
+  defp formatted_call(_name, _arguments), do: nil
+
+  defp formatted_result("judge", text), do: Sak.JudgeFormat.result(text)
+  defp formatted_result("agent", text), do: Sak.AgentFormat.result(text)
+  defp formatted_result(_name, _text), do: nil
 
   defp dedent(code) do
     lines =
