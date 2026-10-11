@@ -8,6 +8,7 @@
     data-models-open={to_string(@models != nil)}
     data-wizard-open={to_string(@new_session != nil)}
     data-confirm-open={to_string(@confirm != nil)}
+    data-permission-open={to_string(@permissions != [])}
     data-rename-open={to_string(@rename != nil)}
     data-command-open={to_string(@command_open?)}
     class="flex flex-col h-screen bg-neutral-950 text-neutral-100 font-mono text-sm"
@@ -324,6 +325,11 @@
     />
     <.wizard :if={@new_session} new_session={@new_session} />
     <.confirm :if={@confirm} confirm={@confirm} />
+    <.permission
+      :if={@permissions != []}
+      request={hd(@permissions)}
+      waiting={length(@permissions) - 1}
+    />
     <.rename :if={@rename} rename={@rename} />
     <.command
       :if={@command_open?}

@@ -66,6 +66,7 @@ export function isModalOpen(dataset) {
     dataset.helpOpen === "true" ||
     dataset.modelsOpen === "true" ||
     dataset.confirmOpen === "true" ||
+    dataset.permissionOpen === "true" ||
     dataset.renameOpen === "true" ||
     dataset.wizardOpen === "true" ||
     dataset.commandOpen === "true"
@@ -73,6 +74,7 @@ export function isModalOpen(dataset) {
 }
 
 export function modalKeys(dataset) {
+  if (dataset.permissionOpen === "true") return ["escape", "y", "a", "n"]
   return dataset.confirmOpen === "true" ? ["escape", "enter"] : ["escape"]
 }
 

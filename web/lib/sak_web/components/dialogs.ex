@@ -35,6 +35,55 @@ defmodule SakWeb.Dialogs do
     """
   end
 
+  attr :request, :map, required: true
+  attr :waiting, :integer, default: 0
+
+  def permission(assigns) do
+    ~H"""
+    <div
+      id="permission-dialog"
+      tabindex="-1"
+      phx-hook="AutoFocus"
+      class="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-20 outline-none"
+    >
+      <div class="bg-neutral-900 border border-yellow-700 rounded-md w-[40rem] p-3 space-y-3">
+        <p class="font-semibold">Allow {@request["tool"]}?</p>
+        <pre
+          id="permission-summary"
+          class="text-xs text-neutral-300 bg-neutral-950 border border-neutral-800 rounded p-2 whitespace-pre-wrap break-all max-h-60 overflow-auto"
+        >{@request["summary"]}</pre>
+        <p :if={@waiting > 0} class="text-xs text-neutral-500">{@waiting} more waiting</p>
+        <div class="flex items-center gap-4 text-xs">
+          <button
+            id="permission-allow"
+            phx-click="permission_answer"
+            phx-value-approval="allow"
+            class="text-green-400 hover:text-neutral-100"
+          >
+            y allow once
+          </button>
+          <button
+            id="permission-allow-conversation"
+            phx-click="permission_answer"
+            phx-value-approval="allow_conversation"
+            class="text-yellow-500 hover:text-neutral-100"
+          >
+            a allow this exact call for the session
+          </button>
+          <button
+            id="permission-deny"
+            phx-click="permission_answer"
+            phx-value-approval="deny"
+            class="text-red-400 hover:text-neutral-100"
+          >
+            n deny
+          </button>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
   attr :rename, :map, required: true
 
   def rename(assigns) do

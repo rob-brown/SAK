@@ -10,6 +10,7 @@ defmodule SakWeb.ChatLive.Events do
   alias SakWeb.ChatLive.Mention
   alias SakWeb.ChatLive.Models
   alias SakWeb.ChatLive.NewSession
+  alias SakWeb.ChatLive.Permission
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
 
@@ -79,6 +80,10 @@ defmodule SakWeb.ChatLive.Events do
 
   def handle("sessions_filter_confirm", _params, socket) do
     Sessions.confirm_filter(socket)
+  end
+
+  def handle("permission_answer", %{"approval" => approval}, socket) do
+    Permission.answer(socket, approval)
   end
 
   def handle("confirm_accept", _params, socket) do

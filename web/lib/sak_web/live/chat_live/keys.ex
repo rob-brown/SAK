@@ -13,6 +13,7 @@ defmodule SakWeb.ChatLive.Keys do
   alias SakWeb.ChatLive.Manage
   alias SakWeb.ChatLive.Models
   alias SakWeb.ChatLive.NewSession
+  alias SakWeb.ChatLive.Permission
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
 
@@ -37,6 +38,7 @@ defmodule SakWeb.ChatLive.Keys do
     assign(socket, focused_pane: pane, zoomed_pane: pane)
   end
 
+  defp modal(%{permissions: [_ | _]}), do: :permission
   defp modal(%{help_open?: true}), do: :help
   defp modal(%{models: %{}}), do: :models
   defp modal(%{new_session: %{}}), do: :wizard
@@ -46,6 +48,10 @@ defmodule SakWeb.ChatLive.Keys do
   defp modal(%{chat_search_open?: true}), do: :chat_search
   defp modal(%{sessions_filter_open?: true}), do: :sessions_filter
   defp modal(_assigns), do: nil
+
+  defp modal_key(:permission, key, socket) do
+    Permission.key(socket, key)
+  end
 
   defp modal_key(:help, "escape", socket) do
     close_help(socket)

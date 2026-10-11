@@ -6,6 +6,8 @@ import { loadConfig } from "./config.ts";
 import { Gateway } from "./gateway.ts";
 import { ModelCatalog, PROVIDER_ID } from "./models.ts";
 import { openHarness } from "./open.ts";
+import { Authorizer } from "./permissions/authorizer.ts";
+import { PermissionBroker } from "./permissions/broker.ts";
 import type { Command, Outgoing } from "./protocol.ts";
 
 const config = await loadConfig(process.env).catch((error: unknown) => {
@@ -15,13 +17,20 @@ const config = await loadConfig(process.env).catch((error: unknown) => {
 for (const warning of config.warnings) process.stderr.write(`sak: ${warning}\n`);
 const storage = await openNodeSqliteStorage(config.dbPath);
 const catalog = new ModelCatalog(config);
-const harness = await openHarness(storage, catalog.models, config);
 
 const send = (message: Outgoing) => {
 	process.stdout.write(`${JSON.stringify(message)}\n`);
 };
 
+const broker = new PermissionBroker(send);
+const harness = await openHarness(storage, catalog.models, {
+	authorizer: new Authorizer(config.permissions, broker),
+	configDir: config.configDir,
+	instructionMaxChars: config.instructionMaxChars,
+});
+
 const gateway = new Gateway({
+	broker,
 	cwd: config.cwd,
 	ensureModel: (modelId) => catalog.ensure(modelId),
 	harness,

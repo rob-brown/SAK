@@ -13,6 +13,7 @@ defmodule SakWeb.ChatLive do
   alias SakWeb.ChatLive.Keys
   alias SakWeb.ChatLive.Mention
   alias SakWeb.ChatLive.NewSession
+  alias SakWeb.ChatLive.Permission
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
 
@@ -55,8 +56,25 @@ defmodule SakWeb.ChatLive do
     {:noreply, socket |> assign(chat: chat) |> apply_ops(ops) |> Entries.refresh()}
   end
 
+  def handle_info({:gateway_permission, id, request}, %{assigns: %{current_id: id}} = socket) do
+    {:noreply, Permission.received(socket, request)}
+  end
+
+  def handle_info(
+        {:gateway_permission_resolved, id, request_id},
+        %{assigns: %{current_id: id}} = socket
+      ) do
+    {:noreply, Permission.resolved(socket, request_id)}
+  end
+
   def handle_info(:gateway_started, socket) do
-    socket = socket |> assign(gateway_up?: true) |> log("gateway started") |> Sessions.refresh()
+    socket =
+      socket
+      |> assign(gateway_up?: true)
+      |> Permission.reset()
+      |> log("gateway started")
+      |> Sessions.refresh()
+
     {:noreply, attach(socket)}
   end
 
@@ -151,6 +169,7 @@ defmodule SakWeb.ChatLive do
       models: nil,
       new_session: nil,
       confirm: nil,
+      permissions: [],
       rename: nil,
       command_open?: false,
       command_query: "",
@@ -192,13 +211,18 @@ defmodule SakWeb.ChatLive do
       focused_pane: :chat_history,
       zoomed_pane: nil
     )
+    |> Permission.reset()
     |> Entries.reset()
     |> Items.refresh()
     |> attach()
   end
 
   defp deselect(socket) do
-    socket |> assign(current_id: nil, chat: %Chat{}) |> Entries.reset() |> Items.refresh()
+    socket
+    |> assign(current_id: nil, chat: %Chat{})
+    |> Permission.reset()
+    |> Entries.reset()
+    |> Items.refresh()
   end
 
   defp attach(%{assigns: %{current_id: nil}} = socket), do: socket

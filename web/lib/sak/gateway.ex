@@ -121,6 +121,19 @@ defmodule Sak.Gateway do
     state
   end
 
+  defp dispatch(%{"type" => "permission_request", "conversationId" => id} = request, state) do
+    broadcast(id, {:gateway_permission, id, request})
+    state
+  end
+
+  defp dispatch(
+         %{"type" => "permission_resolved", "conversationId" => id, "requestId" => request_id},
+         state
+       ) do
+    broadcast(id, {:gateway_permission_resolved, id, request_id})
+    state
+  end
+
   defp dispatch(message, state) do
     Logger.warning("gateway sent unknown message: #{inspect(message)}")
     state

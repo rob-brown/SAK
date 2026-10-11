@@ -1,7 +1,7 @@
 const AutoFocus = {
   mounted() {
     this.el.focus()
-    this.el.select()
+    if (typeof this.el.select === "function") this.el.select()
   },
 }
 

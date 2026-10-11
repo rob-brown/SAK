@@ -20,6 +20,12 @@ test("only the delete confirmation also forwards enter", () => {
   assert.deepEqual(modalKeys({confirmOpen: "true"}), ["escape", "enter"])
 })
 
+test("a permission prompt is a modal that forwards the answer keys", () => {
+  assert.equal(isModalOpen({permissionOpen: "true"}), true)
+  assert.deepEqual(modalKeys({permissionOpen: "true"}), ["escape", "y", "a", "n"])
+  assert.deepEqual(modalKeys({permissionOpen: "true", confirmOpen: "true"}), ["escape", "y", "a", "n"])
+})
+
 test("the chat pane scrolls natively on the chat tab and hands keys to the server on the entries tab", () => {
   // Arrange
   const chat = {focusedPane: "chat_history", chatTab: "chat"}
