@@ -160,7 +160,7 @@ defmodule Sak.ToolFormatTest do
 
   test "answers follow the same limits with their own length cut and no note when everything fits" do
     # Arrange
-    long = String.duplicate("b", 1_200)
+    long = String.duplicate("b", 2_200)
     many = Jason.encode!([long, "2", "3", "4"])
     few = Jason.encode!(["1", "2", "3"])
 
@@ -169,7 +169,7 @@ defmodule Sak.ToolFormatTest do
     whole = AgentFormat.result(few)
 
     # Assert
-    assert cut =~ "> #{String.duplicate("b", 1_000)}\n>\n> … 200 more characters"
+    assert cut =~ "> #{String.duplicate("b", 2_000)}\n>\n> … 200 more characters"
     refute cut =~ "**4.**"
     assert String.ends_with?(cut, "_… 1 more answer not shown_")
     refute whole =~ "not shown"
