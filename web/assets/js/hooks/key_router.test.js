@@ -1,7 +1,13 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import {chatScrolls, isModalOpen, modalKeys, scrollTargetId} from "./key_router.js"
+import {chatScrolls, isModalOpen, leavesToBrowser, modalKeys, scrollTargetId} from "./key_router.js"
+
+test("a key pressed with cmd is left to the browser so cmd-c copies", () => {
+  assert.equal(leavesToBrowser({key: "c", metaKey: true}), true)
+  assert.equal(leavesToBrowser({key: "c", metaKey: false}), false)
+  assert.equal(leavesToBrowser({key: "d", ctrlKey: true, metaKey: false}), false)
+})
 
 test("no modal is open when none of the flags are set", () => {
   assert.equal(isModalOpen({}), false)

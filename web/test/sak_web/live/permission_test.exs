@@ -62,6 +62,23 @@ defmodule SakWeb.PermissionTest do
                      %{"requestId" => "r1", "approval" => "allow"}}
   end
 
+  test "a request closes the command palette so the prompt is the only thing taking keys" do
+    # Arrange
+    {:ok, view, _html} = live(build_conn(), ~p"/c/1")
+    press(view, ":")
+    opened = has_element?(view, "#command-form")
+
+    # Act
+    send_request(view)
+
+    # Assert
+    assert opened
+    refute has_element?(view, "#command-form")
+    assert has_element?(view, "#permission-dialog", "Allow bash?")
+    assert has_element?(view, "#sak[data-permission-open=true]")
+    refute has_element?(view, "#sak[data-command-open=true]")
+  end
+
   test "a request from a subagent says so" do
     # Arrange
     {:ok, view, _html} = live(build_conn(), ~p"/c/1")

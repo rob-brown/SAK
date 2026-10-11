@@ -2,6 +2,7 @@ defmodule SakWeb.ChatLive.Permission do
   @moduledoc false
 
   alias Phoenix.Component
+  alias SakWeb.ChatLive.Command
 
   @approvals %{"y" => "allow", "a" => "allow_conversation", "n" => "deny", "escape" => "deny"}
 
@@ -13,7 +14,7 @@ defmodule SakWeb.ChatLive.Permission do
     if Enum.any?(pending, &(&1["requestId"] == request["requestId"])) do
       socket
     else
-      Component.assign(socket, permissions: pending ++ [request])
+      socket |> Command.close() |> Component.assign(permissions: pending ++ [request])
     end
   end
 

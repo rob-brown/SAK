@@ -63,6 +63,10 @@ export function chatScrolls(dataset) {
   return (dataset.focusedPane || "chat_history") === "chat_history" && !serverTabs.includes(dataset.chatTab)
 }
 
+export function leavesToBrowser(event) {
+  return event.metaKey === true
+}
+
 function focusedPane(root) {
   return root.dataset.focusedPane || "chat_history"
 }
@@ -100,6 +104,8 @@ const KeyRouter = {
       const key = canonicalKey(event)
       const mods = modifiers(event)
       const target = event.target
+
+      if (leavesToBrowser(event)) return
 
       if (isTextEntry(target) && key !== "escape") return
 
