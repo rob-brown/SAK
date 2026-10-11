@@ -11,6 +11,7 @@ import { openHarness } from "../src/open.ts";
 import { Authorizer } from "../src/permissions/authorizer.ts";
 import { PermissionBroker } from "../src/permissions/broker.ts";
 import type { PermissionJudge } from "../src/permissions/judge.ts";
+import { type HarnessRef, personaRulesFor } from "../src/permissions/persona-rules.ts";
 import { rootConversation } from "../src/permissions/root.ts";
 import type { Policy } from "../src/permissions/rules.ts";
 import type { Outgoing } from "../src/protocol.ts";
@@ -37,8 +38,9 @@ export async function setup(
 	const configDir = await mkdtemp(join(tmpdir(), "sak-config-"));
 	const outgoing: Outgoing[] = [];
 	const send = (message: Outgoing) => outgoing.push(message);
+	const live: HarnessRef = {};
 	const broker = policy ? new PermissionBroker(send) : undefined;
-	const authorizer = policy && broker ? new Authorizer(policy, broker, rootConversation(storage), permissionJudge) : undefined;
+	const authorizer = policy && broker ? new Authorizer(policy, broker, rootConversation(storage), permissionJudge, personaRulesFor(personasDir, live)) : undefined;
 	const shared = judge ? { client: judge, minConfidence: internal?.minConfidence ?? 0.8 } : undefined;
 	const subagents = subagentLimit
 		? {
@@ -53,6 +55,7 @@ export async function setup(
 		...(subagents ? { subagents } : {}),
 		...(judge ? { judge } : {}),
 	});
+	live.harness = harness;
 	const ensured: string[] = [];
 	const model = faux.getModel();
 	const gateway = new Gateway({

@@ -3,7 +3,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { findPersona, loadPersonas, parsePersona } from "../src/personas.ts";
+import { builtinPersona, findPersona, loadPersonas, parsePersona } from "../src/personas.ts";
 
 const BUILDER = `---
 name: builder
@@ -106,4 +106,34 @@ test("finding an unknown persona fails", async () => {
 
 	// Assert
 	await assert.rejects(result, /unknown persona ghost/);
+});
+
+test("parenthesised tool entries become allow rules and unsupported ones are reported", () => {
+	// Arrange
+	const file = "---\nname: builder\ntools: Read, Bash(mix compile:*), Bash(git diff *), Skill(critical-review), Grep(todo), Edit()\n---\nBody";
+
+	// Act
+	const persona = parsePersona("builder.md", file);
+
+	// Assert
+	assert.deepEqual(persona.rules, [
+		{ tool: "bash", pattern: "mix compile:*" },
+		{ tool: "bash", pattern: "git diff *" },
+	]);
+	assert.deepEqual(persona.tools?.slice().sort(), ["bash", "codemode", "edit", "read"]);
+	assert.equal(persona.warnings.length, 3);
+	assert.match(persona.warnings.join("\n"), /unsupported tool Skill\(critical-review\)/);
+	assert.match(persona.warnings.join("\n"), /patterns are not supported for Grep\(todo\)/);
+	assert.match(persona.warnings.join("\n"), /empty pattern in Edit\(\)/);
+});
+
+test("a persona without patterns, and the built-in default, grant nothing", () => {
+	// Arrange
+	const plain = parsePersona("plain.md", "---\nname: plain\ntools: Read, Bash\n---\nBody");
+
+	// Act
+	const rules = [plain.rules, builtinPersona().rules];
+
+	// Assert
+	assert.deepEqual(rules, [[], []]);
 });

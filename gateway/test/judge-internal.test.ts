@@ -315,6 +315,7 @@ test("winnow:e4b matches a PDF request to the pdf skill and leaves an unrelated 
 	const local = new JudgeClient({ baseUrl: "http://localhost:11435", model: "winnow:e4b", timeoutMs: 60_000 });
 	const deps = { client: local, minConfidence: 0.7, configDir: await mkdtemp(join(tmpdir(), "sak-live-")) };
 	const cwd = await project();
+	await local.evaluate("warm up", { q: { type: "noul", instructions: "Is this text a greeting?" } });
 
 	// Act
 	const pdf = (await suggestSkill(deps, "please fill in the attached PDF tax form", cwd)).content;

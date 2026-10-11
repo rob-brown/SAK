@@ -21,7 +21,10 @@ export type Where = {
 
 export type RootOf = (conversationId: number) => Promise<number>;
 
+export type PersonaRules = (conversationId: number) => Promise<readonly Rule[]>;
+
 const itself: RootOf = async (conversationId) => conversationId;
+const noRules: PersonaRules = async () => [];
 
 const NO_JUDGE: Assessment = {
 	flagged: true,
@@ -34,12 +37,20 @@ export class Authorizer {
 	private readonly grants = new Map<number, Rule[]>();
 	private readonly judge: PermissionJudge | undefined;
 	private readonly modes = new Map<number, Mode>();
+	private readonly personaRules: PersonaRules;
 	private readonly policy: Policy;
 	private readonly rootOf: RootOf;
 
-	constructor(policy: Policy, broker: PermissionBroker, rootOf: RootOf = itself, judge?: PermissionJudge) {
+	constructor(
+		policy: Policy,
+		broker: PermissionBroker,
+		rootOf: RootOf = itself,
+		judge?: PermissionJudge,
+		personaRules: PersonaRules = noRules,
+	) {
 		this.broker = broker;
 		this.judge = judge;
+		this.personaRules = personaRules;
 		this.policy = policy;
 		this.rootOf = rootOf;
 	}
@@ -60,7 +71,8 @@ export class Authorizer {
 		const root = await this.rootOf(where.conversationId);
 		const mode = this.modeFor(root);
 		const granted = this.grants.get(root) ?? [];
-		const effective = { ...this.policy, mode, allow: [...this.policy.allow, ...granted] };
+		const fromPersona = await this.personaRules(where.conversationId);
+		const effective = { ...this.policy, mode, allow: [...this.policy.allow, ...fromPersona, ...granted] };
 		const summary = summarize(call);
 		let note: string | undefined;
 		let decision: Settled | "judge" = decide(effective, call, where.cwd);

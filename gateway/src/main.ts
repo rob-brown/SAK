@@ -10,6 +10,7 @@ import { openHarness } from "./open.ts";
 import { Authorizer } from "./permissions/authorizer.ts";
 import { PermissionBroker } from "./permissions/broker.ts";
 import { PermissionJudge } from "./permissions/judge.ts";
+import { type HarnessRef, personaRulesFor } from "./permissions/persona-rules.ts";
 import { rootConversation } from "./permissions/root.ts";
 import type { Command, Outgoing } from "./protocol.ts";
 import { Semaphore } from "./subagents/semaphore.ts";
@@ -42,7 +43,9 @@ const permissionJudge =
 		: undefined;
 
 const broker = new PermissionBroker(send);
-const authorizer = new Authorizer(config.permissions, broker, rootConversation(storage), permissionJudge);
+const live: HarnessRef = {};
+const personaRules = personaRulesFor(config.personasDir, live);
+const authorizer = new Authorizer(config.permissions, broker, rootConversation(storage), permissionJudge, personaRules);
 const harness = await openHarness(storage, catalog.models, {
 	authorizer,
 	configDir: config.configDir,
@@ -54,6 +57,8 @@ const harness = await openHarness(storage, catalog.models, {
 		...(internal && config.judge.pickPersonas ? { judge: internal } : {}),
 	},
 });
+
+live.harness = harness;
 
 const gateway = new Gateway({
 	authorizer,

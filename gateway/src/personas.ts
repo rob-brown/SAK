@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { splitFrontmatter } from "./frontmatter.ts";
+import { parseRule, type Rule } from "./permissions/rules.ts";
 import { defaultInstructions } from "./prompt.ts";
 import { CODEMODE, TOOL_NAMES } from "./tools.ts";
 
@@ -12,6 +13,7 @@ export type Persona = {
 	readonly model: string | null;
 	readonly tools: readonly string[] | null;
 	readonly instructions: string;
+	readonly rules: readonly Rule[];
 	readonly source: "builtin" | "file";
 	readonly warnings: readonly string[];
 };
@@ -38,6 +40,7 @@ export function builtinPersona(): Persona {
 		model: null,
 		tools: null,
 		instructions: defaultInstructions(TOOL_NAMES),
+		rules: [],
 		source: "builtin",
 		warnings: [],
 	};
@@ -61,14 +64,16 @@ export async function findPersona(directory: string, name: string): Promise<Pers
 export function parsePersona(fileName: string, text: string): Persona {
 	const { fields, body } = splitFrontmatter(text);
 	const warnings: string[] = [];
+	const rules: Rule[] = [];
 	const name = (fields.name ?? fileName.replace(/\.md$/i, "")).trim();
 	const model = fields.model && !CLAUDE_MODEL_ALIASES.has(fields.model.trim().toLowerCase()) ? fields.model.trim() : null;
 	return {
 		name,
 		description: fields.description?.trim() ?? "",
 		model,
-		tools: fields.tools === undefined ? null : mapTools(fields.tools, warnings),
+		tools: fields.tools === undefined ? null : mapTools(fields.tools, warnings, rules),
 		instructions: body.trim(),
+		rules,
 		source: "file",
 		warnings,
 	};
@@ -94,16 +99,34 @@ async function readPersonaFiles(directory: string): Promise<Persona[]> {
 	return personas.flatMap((persona) => (persona ? [persona] : []));
 }
 
-function mapTools(list: string, warnings: string[]): string[] {
+function mapTools(list: string, warnings: string[], rules: Rule[]): string[] {
 	const names = new Set<string>([CODEMODE]);
 	for (const entry of splitTopLevel(list)) {
 		const base = entry.replace(/\(.*$/s, "").trim().toLowerCase();
 		if (base === "") continue;
 		const mapped = TOOL_ALIASES[base];
-		if (mapped) names.add(mapped);
-		else warnings.push(`unsupported tool ${entry.trim()}`);
+		if (!mapped) {
+			warnings.push(`unsupported tool ${entry.trim()}`);
+			continue;
+		}
+		names.add(mapped);
+		if (entry.includes("(")) addRule(entry.trim(), base, mapped, rules, warnings);
 	}
 	return [...names];
+}
+
+function addRule(entry: string, base: string, mapped: string, rules: Rule[], warnings: string[]) {
+	if (base !== mapped) {
+		warnings.push(`patterns are not supported for ${entry}; the pattern is ignored`);
+		return;
+	}
+	try {
+		const rule = parseRule(entry);
+		if (rule.pattern === undefined) warnings.push(`empty pattern in ${entry} is ignored`);
+		else rules.push(rule);
+	} catch (error) {
+		warnings.push(error instanceof Error ? error.message : String(error));
+	}
 }
 
 function splitTopLevel(list: string): string[] {
