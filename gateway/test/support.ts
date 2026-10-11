@@ -10,6 +10,7 @@ import type { JudgeClient } from "../src/judge/client.ts";
 import { openHarness } from "../src/open.ts";
 import { Authorizer } from "../src/permissions/authorizer.ts";
 import { PermissionBroker } from "../src/permissions/broker.ts";
+import type { PermissionJudge } from "../src/permissions/judge.ts";
 import { rootConversation } from "../src/permissions/root.ts";
 import type { Policy } from "../src/permissions/rules.ts";
 import type { Outgoing } from "../src/protocol.ts";
@@ -21,7 +22,13 @@ export type Internal = {
 	readonly suggestSkills?: boolean;
 };
 
-export async function setup(policy?: Policy, subagentLimit?: number, judge?: JudgeClient, internal?: Internal) {
+export async function setup(
+	policy?: Policy,
+	subagentLimit?: number,
+	judge?: JudgeClient,
+	internal?: Internal,
+	permissionJudge?: PermissionJudge,
+) {
 	const faux = fauxProvider();
 	const models = createModels();
 	models.setProvider(faux.provider);
@@ -31,7 +38,7 @@ export async function setup(policy?: Policy, subagentLimit?: number, judge?: Jud
 	const outgoing: Outgoing[] = [];
 	const send = (message: Outgoing) => outgoing.push(message);
 	const broker = policy ? new PermissionBroker(send) : undefined;
-	const authorizer = policy && broker ? new Authorizer(policy, broker, rootConversation(storage)) : undefined;
+	const authorizer = policy && broker ? new Authorizer(policy, broker, rootConversation(storage), permissionJudge) : undefined;
 	const shared = judge ? { client: judge, minConfidence: internal?.minConfidence ?? 0.8 } : undefined;
 	const subagents = subagentLimit
 		? {

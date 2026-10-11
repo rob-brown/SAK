@@ -9,6 +9,7 @@ import { JudgeClient } from "./judge/client.ts";
 import { openHarness } from "./open.ts";
 import { Authorizer } from "./permissions/authorizer.ts";
 import { PermissionBroker } from "./permissions/broker.ts";
+import { PermissionJudge } from "./permissions/judge.ts";
 import { rootConversation } from "./permissions/root.ts";
 import type { Command, Outgoing } from "./protocol.ts";
 import { Semaphore } from "./subagents/semaphore.ts";
@@ -28,8 +29,20 @@ const send = (message: Outgoing) => {
 const judge = config.judge.enabled ? new JudgeClient(config.judge) : undefined;
 const internal = judge ? { client: judge, minConfidence: config.judge.minConfidence } : undefined;
 
+const needsJudge = (config.permissions.judge ?? []).length > 0;
+if (needsJudge && !judge) {
+	process.stderr.write("sak: [permissions] judge rules need [judge] enabled = true; those calls will ask a person\n");
+}
+const permissionJudge =
+	judge && needsJudge
+		? new PermissionJudge(
+				new JudgeClient({ ...config.judge, model: config.judge.permissionModel ?? config.judge.model }),
+				config.permissionThreshold,
+			)
+		: undefined;
+
 const broker = new PermissionBroker(send);
-const authorizer = new Authorizer(config.permissions, broker, rootConversation(storage));
+const authorizer = new Authorizer(config.permissions, broker, rootConversation(storage), permissionJudge);
 const harness = await openHarness(storage, catalog.models, {
 	authorizer,
 	configDir: config.configDir,

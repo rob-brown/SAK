@@ -4,7 +4,8 @@ import { parseCommand } from "./command.ts";
 export const MODES = ["accept-edits", "ask", "auto"] as const;
 
 export type Mode = (typeof MODES)[number];
-export type Decision = "allow" | "ask" | "deny";
+export type Decision = "allow" | "ask" | "deny" | "judge";
+export type Settled = Exclude<Decision, "judge">;
 
 export type Rule = {
 	readonly tool: string;
@@ -17,6 +18,7 @@ export type Policy = {
 	readonly allow: readonly Rule[];
 	readonly ask: readonly Rule[];
 	readonly deny: readonly Rule[];
+	readonly judge?: readonly Rule[];
 };
 
 export type Call = {
@@ -43,7 +45,12 @@ export function decide(policy: Policy, call: Call, cwd: string): Decision {
 	if (anyMatch(policy.deny, call, subject, cwd)) return "deny";
 	if (anyMatch(policy.ask, call, subject, cwd)) return "ask";
 	if (covered(policy.allow, call, subject, cwd)) return "allow";
+	if (anyMatch(policy.judge ?? [], call, subject, cwd)) return "judge";
 	return fallback(policy.mode, call, subject, cwd);
+}
+
+export function afterJudge(mode: Mode, call: Call, cwd: string): Settled {
+	return fallback(mode, call, subjectOf(call, cwd), cwd);
 }
 
 export function grantFor(call: Call, cwd: string): Rule[] {
@@ -106,7 +113,7 @@ function covered(rules: readonly Rule[], call: Call, subject: Subject, cwd: stri
 	return false;
 }
 
-function fallback(mode: Mode, call: Call, subject: Subject, cwd: string): Decision {
+function fallback(mode: Mode, call: Call, subject: Subject, cwd: string): Settled {
 	const inside = subject.kind === "path" && isInside(cwd, subject.path);
 	if (call.name === "codemode") return "allow";
 	if (call.name === "read") return mode === "auto" || inside ? "allow" : "ask";

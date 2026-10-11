@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { parse } from "smol-toml";
 import type { JudgeSettings } from "./judge/client.ts";
+import { DEFAULT_THRESHOLD } from "./permissions/judge.ts";
 import { type Mode, MODES, parseRule, type Policy } from "./permissions/rules.ts";
 import { MAX_FILE_CHARS } from "./project-instructions.ts";
 
@@ -15,9 +16,11 @@ export type Config = {
 	readonly cwd: string;
 	readonly dbPath: string;
 	readonly instructionMaxChars: number;
+	readonly permissionThreshold: number;
 	readonly judge: JudgeSettings & {
 		readonly enabled: boolean;
 		readonly minConfidence: number;
+		readonly permissionModel?: string;
 		readonly pickPersonas: boolean;
 		readonly suggestSkills: boolean;
 	};
@@ -40,11 +43,12 @@ const SCHEMA: Readonly<Record<string, Readonly<Record<string, Kind>>>> = {
 		enabled: "flag",
 		min_confidence: "ratio",
 		model: "text",
+		permission_model: "text",
 		pick_personas: "flag",
 		suggest_skills: "flag",
 		timeout_ms: "count",
 	},
-	permissions: { allow: "list", ask: "list", deny: "list", mode: "mode" },
+	permissions: { allow: "list", ask: "list", deny: "list", judge: "list", judge_threshold: "ratio", mode: "mode" },
 	storage: { db: "text" },
 	subagents: { max_concurrent: "count" },
 };
@@ -70,6 +74,7 @@ export async function loadConfig(env: NodeJS.ProcessEnv): Promise<Config> {
 			enabled: flag(values, "judge.enabled") ?? false,
 			minConfidence: ratio(values, "judge.min_confidence") ?? DEFAULT_JUDGE_CONFIDENCE,
 			pickPersonas: flag(values, "judge.pick_personas") ?? true,
+			...optional(env.SAK_JUDGE_PERMISSION_MODEL ?? text(values, "judge.permission_model")),
 			suggestSkills: flag(values, "judge.suggest_skills") ?? true,
 			baseUrl: env.SAK_JUDGE_URL ?? text(values, "judge.base_url") ?? DEFAULT_JUDGE_URL,
 			model: env.SAK_JUDGE_MODEL ?? text(values, "judge.model") ?? DEFAULT_JUDGE_MODEL,
@@ -78,6 +83,7 @@ export async function loadConfig(env: NodeJS.ProcessEnv): Promise<Config> {
 		},
 		modelId: env.SAK_MODEL ?? text(values, "endpoint.model") ?? "ornith-1.5-35b-a3b",
 		permissions: policyFrom(path, values),
+		permissionThreshold: ratio(values, "permissions.judge_threshold") ?? DEFAULT_THRESHOLD,
 		personasDir: join(configDir, "personas"),
 		subagentLimit: count(values, "subagents.max_concurrent") ?? DEFAULT_SUBAGENT_LIMIT,
 		warnings,
@@ -91,6 +97,7 @@ function policyFrom(path: string, values: Values): Policy {
 			allow: (list(values, "permissions.allow") ?? []).map(parseRule),
 			ask: (list(values, "permissions.ask") ?? []).map(parseRule),
 			deny: (list(values, "permissions.deny") ?? []).map(parseRule),
+			judge: (list(values, "permissions.judge") ?? []).map(parseRule),
 		};
 	} catch (error) {
 		throw new Error(`${path}: ${error instanceof Error ? error.message : String(error)}`);
@@ -155,6 +162,10 @@ function describeKind(kind: Kind): string {
 	if (kind === "mode") return `one of ${MODES.join(", ")}`;
 	if (kind === "list") return "a list of non-empty strings";
 	return "a positive integer";
+}
+
+function optional(model: string | undefined): { permissionModel?: string } {
+	return model === undefined ? {} : { permissionModel: model };
 }
 
 function ratio(values: Values, key: string): number | undefined {

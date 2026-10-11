@@ -47,5 +47,6 @@ export type Outgoing =
 			arguments: Readonly<Record<string, unknown>>;
 			summary: string;
 			subagent?: number;
+			note?: string;
 	  }
 	| { type: "permission_resolved"; conversationId: number; requestId: string };

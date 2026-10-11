@@ -103,6 +103,9 @@ defmodule SakWeb.Dialogs do
         <p :if={@request["subagent"]} id="permission-subagent" class="text-xs text-neutral-500">
           Requested by subagent #{@request["subagent"]}
         </p>
+        <p :if={@request["note"]} id="permission-note" class="text-xs text-yellow-500">
+          {@request["note"]}
+        </p>
         <pre
           id="permission-summary"
           class="text-xs text-neutral-300 bg-neutral-950 border border-neutral-800 rounded p-2 whitespace-pre-wrap break-all max-h-60 overflow-auto"

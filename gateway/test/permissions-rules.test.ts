@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { parseCommand } from "../src/permissions/command.ts";
-import { type Call, decide, grantFor, type Mode, parseRule, type Policy } from "../src/permissions/rules.ts";
+import { afterJudge, type Call, decide, grantFor, type Mode, parseRule, type Policy } from "../src/permissions/rules.ts";
 
 const CWD = "/work/app";
 
@@ -137,4 +137,36 @@ test("a grant for a command is literal per segment and nothing is granted for op
 	assert.equal(decide(withGrant, compound, CWD), "allow");
 	assert.equal(decide(withGrant, bash("ls *.ts /etc"), CWD), "ask");
 	assert.deepEqual(grantFor(opaque, CWD), []);
+});
+
+test("judge rules come after deny, ask and allow, and before the mode", () => {
+	// Arrange
+	const rules = (extra: Partial<Record<"allow" | "ask" | "deny", string[]>>): Policy => ({
+		mode: "auto",
+		allow: (extra.allow ?? []).map(parseRule),
+		ask: (extra.ask ?? []).map(parseRule),
+		deny: (extra.deny ?? []).map(parseRule),
+		judge: ["Bash"].map(parseRule),
+	});
+
+	// Act
+	const plain = decide(rules({}), bash("make"), CWD);
+	const allowed = decide(rules({ allow: ["Bash(make)"] }), bash("make"), CWD);
+	const asked = decide(rules({ ask: ["Bash(make)"] }), bash("make"), CWD);
+	const denied = decide(rules({ deny: ["Bash(make)"] }), bash("make"), CWD);
+	const unmatched = decide(rules({}), file("read", "a.txt"), CWD);
+
+	// Assert
+	assert.deepEqual([plain, allowed, asked, denied, unmatched], ["judge", "allow", "ask", "deny", "allow"]);
+});
+
+test("after a clean verdict the mode decides, so the judge can never remove a prompt", () => {
+	// Arrange
+	const call = bash("make");
+
+	// Act
+	const results = (["ask", "accept-edits", "auto"] as const).map((mode) => afterJudge(mode, call, CWD));
+
+	// Assert
+	assert.deepEqual(results, ["ask", "ask", "allow"]);
 });

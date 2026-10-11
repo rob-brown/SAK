@@ -73,6 +73,21 @@ defmodule SakWeb.PermissionTest do
     assert has_element?(view, "#permission-subagent", "subagent #12")
   end
 
+  test "a note from the judge is shown above the command" do
+    # Arrange
+    {:ok, view, _html} = live(build_conn(), ~p"/c/1")
+
+    # Act
+    send_request(
+      view,
+      Map.put(@request, "note", "Flagged by the judge as likely destructive (97%).")
+    )
+
+    # Assert
+    assert has_element?(view, "#permission-note", "likely destructive (97%)")
+    refute has_element?(view, "#permission-subagent")
+  end
+
   test "a denies for the session grant, and n and escape deny" do
     # Arrange
     {:ok, view, _html} = live(build_conn(), ~p"/c/1")

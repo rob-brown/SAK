@@ -167,6 +167,28 @@ test("the internal judge uses can be switched off and the confidence bar raised,
 	);
 });
 
+test("judge rules, their threshold and a separate permission model come from the file, with defaults when absent", async () => {
+	// Arrange
+	const bare = await configDirWith();
+	const filed = await configDirWith(
+		'[permissions]\njudge = ["Bash", "Write(src/**)"]\njudge_threshold = 0.85\n[judge]\npermission_model = "cygnet:latest"\n',
+	);
+
+	// Act
+	const defaults = await loadConfig({ SAK_CONFIG_DIR: bare });
+	const fromFile = await loadConfig({ SAK_CONFIG_DIR: filed });
+	const overridden = await loadConfig({ SAK_CONFIG_DIR: filed, SAK_JUDGE_PERMISSION_MODEL: "kev:9b" });
+
+	// Assert
+	assert.deepEqual([defaults.permissions.judge, defaults.permissionThreshold, defaults.judge.permissionModel], [[], 0.7, undefined]);
+	assert.deepEqual(fromFile.permissions.judge, [
+		{ tool: "bash", pattern: undefined },
+		{ tool: "write", pattern: "src/**" },
+	]);
+	assert.deepEqual([fromFile.permissionThreshold, fromFile.judge.permissionModel], [0.85, "cygnet:latest"]);
+	assert.equal(overridden.judge.permissionModel, "kev:9b");
+});
+
 test("a judge flag that is not true or false stops the load", async () => {
 	// Arrange
 	const SAK_CONFIG_DIR = await configDirWith('[judge]\nenabled = "yes"\n');
@@ -186,5 +208,5 @@ test("without permission settings every call that is not a plain read asks", asy
 	const { permissions } = await loadConfig({ SAK_CONFIG_DIR });
 
 	// Assert
-	assert.deepEqual(permissions, { mode: "ask", allow: [], ask: [], deny: [] });
+	assert.deepEqual(permissions, { mode: "ask", allow: [], ask: [], deny: [], judge: [] });
 });
