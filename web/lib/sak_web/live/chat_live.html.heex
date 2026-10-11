@@ -156,6 +156,14 @@
             >
               Entries
             </button>
+            <button
+              id="tab-subagents"
+              phx-click="switch_chat_tab"
+              phx-value-tab="subagents"
+              class={["px-2 py-1", @chat_tab == :subagents && "text-neutral-100 bg-neutral-900"]}
+            >
+              Subagents
+            </button>
           </div>
           <span :if={@zoomed_pane == :chat_history} class="text-xs text-yellow-600 shrink-0">
             zoomed — z to restore
@@ -168,6 +176,16 @@
           </span>
           <span :if={@chat_tab == :entries} id="entries-count" class="text-xs text-neutral-500">
             {length(@entry_rows)} entries
+          </span>
+          <span
+            :if={@chat_tab == :subagents}
+            id="subagents-count"
+            class="text-xs text-neutral-500"
+          >
+            <% {live, finished} = Subagents.counts(assigns) %>
+            {live} running · {finished} finished{if @show_finished_subagents?,
+              do: " (shown)",
+              else: ""}
           </span>
           <span :if={@chat_tab == :chat} class="text-xs text-neutral-600 shrink-0">
             t {if @thinking_visible?, do: "on", else: "off"} · o {if @tool_output_visible?,
@@ -231,10 +249,45 @@
           </div>
         </div>
 
+        <div :if={@chat_tab == :subagents} id="subagents-pane" class="flex-1 overflow-y-auto">
+          <p :if={Subagents.rows(assigns) == []} id="subagents-empty" class="p-4 text-neutral-600">
+            {if @show_finished_subagents?,
+              do: "no subagents",
+              else: "no running subagents — a shows finished ones"}
+          </p>
+          <div
+            :for={{row, index} <- Enum.with_index(Subagents.rows(assigns))}
+            id={"subagent-#{row.id}"}
+            data-selected={to_string(index == @subagents_selected)}
+            phx-click="subagent_select"
+            phx-value-index={index}
+            class={entry_row_classes(index == @subagents_selected)}
+          >
+            <span class={[
+              "w-4 shrink-0",
+              row.live? && "text-cyan-400",
+              !row.live? && "text-neutral-600"
+            ]}>
+              {if row.live?, do: "●", else: "○"}
+            </span>
+            <span class="w-20 shrink-0 text-xs text-neutral-600">#{row.id}</span>
+            <span class="w-24 shrink-0 text-xs text-neutral-500 truncate">{row.persona}</span>
+            <span class="min-w-0 flex-1 truncate">{row.label}</span>
+            <button
+              :if={row.live? and index == @subagents_selected}
+              id="subagent-abort"
+              phx-click="subagent_abort"
+              class="shrink-0 text-xs text-red-400 hover:text-neutral-100"
+            >
+              x stop
+            </button>
+          </div>
+        </div>
+
         <div
           id="chat-history"
           phx-hook="ChatScroll"
-          class={["flex-1 overflow-y-auto p-4", @chat_tab == :entries && "hidden"]}
+          class={["flex-1 overflow-y-auto p-4", @chat_tab in [:entries, :subagents] && "hidden"]}
         >
           <p :if={@current_id == nil} id="no-session" class="text-neutral-600">
             no active session — enter to select, n to start one

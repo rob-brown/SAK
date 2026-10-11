@@ -54,7 +54,8 @@ function onlyShift(mods) {
 }
 
 export function chatScrolls(dataset) {
-  return (dataset.focusedPane || "chat_history") === "chat_history" && dataset.chatTab !== "entries"
+  const serverTabs = ["entries", "subagents"]
+  return (dataset.focusedPane || "chat_history") === "chat_history" && !serverTabs.includes(dataset.chatTab)
 }
 
 function focusedPane(root) {

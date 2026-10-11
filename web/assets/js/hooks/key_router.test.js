@@ -31,10 +31,11 @@ test("the chat pane scrolls natively on the chat tab and hands keys to the serve
   const chat = {focusedPane: "chat_history", chatTab: "chat"}
   const entries = {focusedPane: "chat_history", chatTab: "entries"}
   const sessions = {focusedPane: "sessions_and_logs", chatTab: "chat"}
+  const subagents = {focusedPane: "chat_history", chatTab: "subagents"}
 
   // Act
-  const results = [chatScrolls(chat), chatScrolls(entries), chatScrolls(sessions)]
+  const results = [chatScrolls(chat), chatScrolls(entries), chatScrolls(sessions), chatScrolls(subagents)]
 
   // Assert
-  assert.deepEqual(results, [true, false, false])
+  assert.deepEqual(results, [true, false, false, false])
 })

@@ -7,27 +7,36 @@ defmodule SakWeb.ChatLive.Entries do
   alias SakWeb.ChatLive.Confirm
   alias SakWeb.ChatLive.Render
   alias SakWeb.ChatLive.Sessions
+  alias SakWeb.ChatLive.Subagents
 
   @page 10
 
-  def switch_tab(socket) do
-    case socket.assigns.chat_tab do
-      :chat -> socket |> Component.assign(chat_tab: :entries) |> refresh() |> select_last()
-      :entries -> Component.assign(socket, chat_tab: :chat)
-    end
+  @tabs [:chat, :entries, :subagents]
+
+  def switch_tab(socket, delta \\ 1) do
+    current = Enum.find_index(@tabs, &(&1 == socket.assigns.chat_tab))
+    enter(socket, Enum.at(@tabs, Integer.mod(current + delta, length(@tabs))))
   end
 
-  def show(socket, "entries") do
-    if socket.assigns.chat_tab == :entries do
+  def show(socket, tab) do
+    wanted = Enum.find(@tabs, :chat, &(Atom.to_string(&1) == tab))
+
+    if socket.assigns.chat_tab == wanted do
       socket
     else
-      switch_tab(socket)
+      enter(socket, wanted)
     end
   end
 
-  def show(socket, _tab) do
-    Component.assign(socket, chat_tab: :chat)
+  defp enter(socket, :entries) do
+    socket |> Component.assign(chat_tab: :entries) |> refresh() |> select_last()
   end
+
+  defp enter(socket, :subagents) do
+    socket |> Component.assign(chat_tab: :subagents) |> Subagents.refresh()
+  end
+
+  defp enter(socket, :chat), do: Component.assign(socket, chat_tab: :chat)
 
   def refresh(%{assigns: %{chat_tab: :entries, chat: chat}} = socket) do
     rows = EntryRows.rows(chat.records)
@@ -42,12 +51,14 @@ defmodule SakWeb.ChatLive.Entries do
   def refresh(socket), do: socket
 
   def reset(socket) do
-    Component.assign(socket,
+    socket
+    |> Component.assign(
       chat_tab: :chat,
       entry_rows: [],
       entries_selected: 0,
       entries_open: MapSet.new()
     )
+    |> Subagents.reset()
   end
 
   def move(socket, delta) do

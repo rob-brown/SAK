@@ -20,6 +20,19 @@ defmodule Sak.Keybindings do
     ]
   end
 
+  def local(:chat_history, :subagents) do
+    [
+      {"[", "Switch to the previous tab"},
+      {"]", "Switch to the next tab"},
+      {"j", "Move the selection down"},
+      {"down", "Move the selection down"},
+      {"k", "Move the selection up"},
+      {"up", "Move the selection up"},
+      {"a", "Show or hide finished subagents (only running ones are listed by default)"},
+      {"x", "Stop the selected running subagent"}
+    ]
+  end
+
   def local(:chat_history, _tab) do
     [
       {"[", "Switch to the previous tab"},

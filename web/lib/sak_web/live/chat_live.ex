@@ -16,6 +16,7 @@ defmodule SakWeb.ChatLive do
   alias SakWeb.ChatLive.Permission
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
+  alias SakWeb.ChatLive.Subagents
 
   import SakWeb.ChatComponents
   import SakWeb.ChatLive.Render
@@ -80,7 +81,7 @@ defmodule SakWeb.ChatLive do
 
   def handle_info(:refresh_conversations, socket) do
     Process.send_after(self(), :refresh_conversations, @refresh_interval)
-    {:noreply, Sessions.refresh(socket)}
+    {:noreply, socket |> Sessions.refresh() |> Subagents.refresh()}
   end
 
   def handle_info({:wizard_index, root, directories}, socket) do
@@ -160,6 +161,9 @@ defmodule SakWeb.ChatLive do
       entry_rows: [],
       entries_selected: 0,
       entries_open: MapSet.new(),
+      subagents: [],
+      subagents_selected: 0,
+      show_finished_subagents?: false,
       show_archived?: false,
       sidebar_tab: :sessions,
       focused_pane: :sessions_and_logs,

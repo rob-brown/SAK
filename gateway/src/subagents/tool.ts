@@ -9,10 +9,13 @@ import {
 	type ToolExecutionApi,
 	type Tx,
 } from "@earendil-works/pi-durable";
+import { seedMeta } from "../meta.ts";
 import { DEFAULT_PERSONA_NAME, findPersona, type Persona } from "../personas.ts";
 import { toolsNamed } from "../tools.ts";
 import { AGENT, DESCRIPTION, PARAMETERS } from "./catalog.ts";
 import type { Semaphore } from "./semaphore.ts";
+
+const NAME_CHARS = 80;
 
 type Context = Parameters<ToolExecutionApi["agent"]>[0];
 type Block = { readonly type: string; readonly text?: string };
@@ -81,6 +84,7 @@ async function childFor(api: ToolExecutionApi, context: Context, run: Run): Prom
 	const created = await api.commit(async (tx) => {
 		const child = await tx.createConversation({ ownership: { kind: "task", taskId: api.taskId } });
 		await configure(tx, child.id, changeFor(run));
+		await seedMeta(tx, child.id, { name: clip(run.prompt), persona: run.persona.name });
 		return Number(child.id);
 	}, context);
 	return await api.memo<number>(run.key, created, context);
@@ -115,6 +119,11 @@ function nextKey(occurrences: Map<string, number>, taskId: unknown, prompt: stri
 	const count = occurrences.get(slot) ?? 0;
 	occurrences.set(slot, count + 1);
 	return `child:${digest}:${count}`;
+}
+
+function clip(prompt: string): string {
+	const line = prompt.replace(/\s+/g, " ").trim();
+	return line.length > NAME_CHARS ? `${line.slice(0, NAME_CHARS)}…` : line;
 }
 
 function failure(message: string) {

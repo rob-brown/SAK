@@ -26,6 +26,10 @@ defmodule Sak.Hints do
     [{"Details", "<enter>"}, {"Fork", "f"}, {"Chat", "["}]
   end
 
+  defp pane(%{focused_pane: :chat_history, chat_tab: :subagents}) do
+    [{"Finished", "a"}, {"Stop", "x"}, {"Chat", "["}]
+  end
+
   defp pane(%{focused_pane: :chat_history}) do
     [
       {"Message", "<enter>"},

@@ -107,6 +107,43 @@ test("subagents do not appear in the session list and cannot start subagents the
 	await harness.close();
 });
 
+test("list_subagents names each child after its prompt and says whether it is still running", async () => {
+	// Arrange
+	const harness = await setup(undefined, 6);
+	let release: () => void = () => {};
+	const gate = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	let started = 0;
+	const child = async (context: { messages: Message[] }) => {
+		started += 1;
+		await gate;
+		return fauxAssistantMessage(`echo:${lastUserText(context.messages)}`);
+	};
+	const run = parentCall(harness, "agent", { prompts: ["first task", "second task"] }, [child, child]);
+	await waitFor(() => started === 2);
+	await harness.gateway.handle({ id: "l1", type: "list_conversations" });
+	const parentId = (reply(harness.outgoing, "l1") as { result: { conversations: { id: number }[] } }).result
+		.conversations[0]?.id as number;
+
+	// Act
+	await harness.gateway.handle({ id: "s1", type: "list_subagents", conversationId: parentId });
+	release();
+	await run;
+	await harness.gateway.handle({ id: "s2", type: "list_subagents", conversationId: parentId });
+
+	// Assert
+	type Listed = { result: { subagents: { name: string; persona: string; live: boolean }[] } };
+	const during = (reply(harness.outgoing, "s1") as Listed).result.subagents;
+	const after = (reply(harness.outgoing, "s2") as Listed).result.subagents;
+	assert.deepEqual(during.map((child) => [child.name, child.persona, child.live]), [
+		["first task", "default", true],
+		["second task", "default", true],
+	]);
+	assert.deepEqual(after.map((child) => child.live), [false, false]);
+	await harness.close();
+});
+
 test("a persona shapes the subagent and an unknown persona is reported without running anything", async () => {
 	// Arrange
 	const harness = await setup(undefined, 6);

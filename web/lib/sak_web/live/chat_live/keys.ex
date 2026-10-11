@@ -16,6 +16,7 @@ defmodule SakWeb.ChatLive.Keys do
   alias SakWeb.ChatLive.Permission
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
+  alias SakWeb.ChatLive.Subagents
 
   def handle(key, socket) do
     socket = assign(socket, last_notice: "")
@@ -120,7 +121,7 @@ defmodule SakWeb.ChatLive.Keys do
   end
 
   defp global(bracket, socket) when bracket in ["[", "]"] do
-    toggle_sidebar_tab(socket)
+    toggle_sidebar_tab(socket, if(bracket == "]", do: 1, else: -1))
   end
 
   defp global(key, %{assigns: %{focused_pane: :chat_history}} = socket) do
@@ -137,6 +138,10 @@ defmodule SakWeb.ChatLive.Keys do
     entries_key(key, socket)
   end
 
+  defp chat_key(key, %{assigns: %{chat_tab: :subagents}} = socket) do
+    subagents_key(key, socket)
+  end
+
   defp chat_key("/", socket) do
     Search.open(socket)
   end
@@ -150,6 +155,12 @@ defmodule SakWeb.ChatLive.Keys do
   end
 
   defp chat_key(_key, socket), do: socket
+
+  defp subagents_key(code, socket) when code in ["j", "down"], do: Subagents.move(socket, 1)
+  defp subagents_key(code, socket) when code in ["k", "up"], do: Subagents.move(socket, -1)
+  defp subagents_key("a", socket), do: Subagents.toggle_finished(socket)
+  defp subagents_key("x", socket), do: Subagents.abort_selected(socket)
+  defp subagents_key(_key, socket), do: socket
 
   defp entries_key(code, socket) when code in ["j", "down"] do
     Entries.move(socket, 1)
@@ -237,18 +248,18 @@ defmodule SakWeb.ChatLive.Keys do
 
   defp open_row(socket), do: socket
 
-  defp toggle_sidebar_tab(%{assigns: %{focused_pane: :sessions_and_logs}} = socket) do
+  defp toggle_sidebar_tab(%{assigns: %{focused_pane: :sessions_and_logs}} = socket, _delta) do
     update(socket, :sidebar_tab, fn
       :sessions -> :logs
       :logs -> :sessions
     end)
   end
 
-  defp toggle_sidebar_tab(%{assigns: %{focused_pane: :chat_history}} = socket) do
-    Entries.switch_tab(socket)
+  defp toggle_sidebar_tab(%{assigns: %{focused_pane: :chat_history}} = socket, delta) do
+    Entries.switch_tab(socket, delta)
   end
 
-  defp toggle_sidebar_tab(socket), do: socket
+  defp toggle_sidebar_tab(socket, _delta), do: socket
 
   defp toggle_zoom(%{assigns: %{zoomed_pane: nil, focused_pane: pane}} = socket) do
     assign(socket, zoomed_pane: pane)

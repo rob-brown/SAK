@@ -13,6 +13,7 @@ defmodule SakWeb.ChatLive.Events do
   alias SakWeb.ChatLive.Permission
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
+  alias SakWeb.ChatLive.Subagents
 
   def handle("wizard_query", %{"query" => query}, socket) do
     NewSession.set_query(socket, query)
@@ -80,6 +81,14 @@ defmodule SakWeb.ChatLive.Events do
 
   def handle("sessions_filter_confirm", _params, socket) do
     Sessions.confirm_filter(socket)
+  end
+
+  def handle("subagent_select", %{"index" => index}, socket) do
+    Subagents.select_index(socket, String.to_integer(index))
+  end
+
+  def handle("subagent_abort", _params, socket) do
+    Subagents.abort_selected(socket)
   end
 
   def handle("permission_answer", %{"approval" => approval}, socket) do

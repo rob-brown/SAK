@@ -12,6 +12,7 @@ export type Command =
 	| { id: string; type: "fork"; conversationId: number; at: number }
 	| { id: string; type: "list_conversations" }
 	| { id: string; type: "list_models" }
+	| { id: string; type: "list_subagents"; conversationId: number }
 	| { id: string; type: "permission_reply"; requestId: string; approval: "allow" | "allow_conversation" | "deny" }
 	| { id: string; type: "set_model"; modelId: string; conversationId?: number }
 	| { id: string; type: "submit"; conversationId: number; content: string; whenBusy?: WhenBusy; requestId?: string };
@@ -23,6 +24,13 @@ export type ConversationSummary = {
 	name: string | null;
 	persona: string | null;
 	state: State;
+};
+
+export type SubagentSummary = {
+	id: number;
+	name: string | null;
+	persona: string | null;
+	live: boolean;
 };
 
 export type Outgoing =

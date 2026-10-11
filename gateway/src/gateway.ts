@@ -12,7 +12,7 @@ import {
 import { readMeta, STATES, writeMeta } from "./meta.ts";
 import { type Approval, APPROVALS, type PermissionBroker } from "./permissions/broker.ts";
 import { DEFAULT_PERSONA_NAME, findPersona, loadPersonas } from "./personas.ts";
-import type { Command, ConversationSummary, Outgoing } from "./protocol.ts";
+import type { Command, ConversationSummary, Outgoing, SubagentSummary } from "./protocol.ts";
 import { toolsNamed } from "./tools.ts";
 
 const context = BACKGROUND_CONTEXT;
@@ -73,6 +73,8 @@ export class Gateway {
 				return this.personas();
 			case "list_models":
 				return this.models();
+			case "list_subagents":
+				return this.subagents(command.conversationId);
 			case "permission_reply":
 				return this.permissionReply(command.requestId, command.approval);
 			case "set_meta":
@@ -82,6 +84,21 @@ export class Gateway {
 			case "submit":
 				return this.submit(command);
 		}
+	}
+
+	private async subagents(conversationId: number) {
+		const { storage, harness } = this.options;
+		const owner = conversationId as ConversationId;
+		const page = await storage.scanConversations({ ownerConversationId: owner }, LIST_LIMIT, undefined, context);
+		const subagents: SubagentSummary[] = await Promise.all(
+			page.items.map(async (record) => {
+				const meta = await readMeta(harness, record.id);
+				const tasks = await storage.scanTasks({ conversationId: record.id }, LIST_LIMIT, undefined, context);
+				const live = tasks.items.some((task) => task.state.status !== "terminal");
+				return { id: Number(record.id), name: meta.name, persona: meta.persona, live };
+			}),
+		);
+		return { subagents };
 	}
 
 	private async permissionReply(requestId: string, approval: Approval) {
