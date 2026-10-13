@@ -30,8 +30,17 @@ defmodule Sak.Markdown do
   end
 
   defp render(text) do
-    MDEx.to_html!(text, extension: @extension)
+    text
+    |> MDEx.parse_document!(extension: @extension)
+    |> MDEx.traverse_and_update(&html_block_as_code/1)
+    |> MDEx.to_html!(render: [escape: true])
   end
+
+  defp html_block_as_code(%MDEx.HtmlBlock{literal: literal}) do
+    %MDEx.CodeBlock{literal: literal}
+  end
+
+  defp html_block_as_code(node), do: node
 
   defp mark_occurrences(text, term, current_occurrence) do
     do_mark(text, String.downcase(text), String.downcase(term), current_occurrence, 0, 0, [])

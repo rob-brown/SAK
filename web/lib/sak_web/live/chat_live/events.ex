@@ -15,6 +15,7 @@ defmodule SakWeb.ChatLive.Events do
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
   alias SakWeb.ChatLive.SkillForm
+  alias SakWeb.ChatLive.TemplateForm
   alias SakWeb.ChatLive.Subagents
   alias SakWeb.ChatLive.UsagePanel
 
@@ -104,6 +105,22 @@ defmodule SakWeb.ChatLive.Events do
 
   def handle("skill_cancel", _params, socket) do
     SkillForm.cancel(socket)
+  end
+
+  def handle("template_change", %{"values" => values}, socket) do
+    TemplateForm.change(socket, values)
+  end
+
+  def handle("template_submit", %{"values" => values}, socket) do
+    TemplateForm.submit(socket, values)
+  end
+
+  def handle("template_field", %{"delta" => delta}, socket) do
+    TemplateForm.move(socket, delta)
+  end
+
+  def handle("template_select", %{"index" => index}, socket) do
+    TemplateForm.select(socket, String.to_integer(index))
   end
 
   def handle("close_usage", _params, socket) do

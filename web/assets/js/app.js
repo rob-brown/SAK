@@ -32,6 +32,7 @@ import KeyRouter from "./hooks/key_router"
 import ModelsInput from "./hooks/models_input"
 import PromptBox from "./hooks/prompt_box"
 import ScrollSelected from "./hooks/scroll_selected"
+import TemplateForm from "./hooks/template_form"
 import WizardInput from "./hooks/wizard_input"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -48,6 +49,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ModelsInput,
     PromptBox,
     ScrollSelected,
+    TemplateForm,
     WizardInput,
   },
 })

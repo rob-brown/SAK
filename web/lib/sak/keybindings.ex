@@ -48,6 +48,8 @@ defmodule Sak.Keybindings do
       {"G", "Jump to the most recent message"},
       {"enter", "Focus the message box"},
       {"/", "Search the chat history"},
+      {"T",
+       "Fill in a task template (task, context, authority, evidence, escalation) and insert it into the message box"},
       {"n", "Jump to the next chat search match, starting from the most recent message"},
       {"N", "Jump to the previous chat search match"}
     ]

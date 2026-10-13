@@ -12,6 +12,14 @@ defmodule Sak.Hints do
           {"Cancel", "<esc>"}
         ]
 
+      assigns.template_form != nil ->
+        [
+          {"Next question", "<tab>"},
+          {"Previous", "<shift-tab>"},
+          {"Insert", "<ctrl-enter>"},
+          {"Cancel", "<esc>"}
+        ]
+
       assigns.permissions != [] ->
         [{"Allow", "y"}, {"Allow for session", "a"}, {"Deny", "n"}]
 
@@ -68,6 +76,7 @@ defmodule Sak.Hints do
     [
       {"Message", "<enter>"},
       {"Search", "/"},
+      {"Template", "T"},
       {"Thinking", "t"},
       {"Tool output", "o"}
     ]

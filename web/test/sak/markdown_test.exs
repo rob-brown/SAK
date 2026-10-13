@@ -17,7 +17,32 @@ defmodule Sak.MarkdownTest do
     # Assert
     refute html =~ "<script"
     refute html =~ "<img"
-    refute html =~ "onerror="
+    assert html =~ "&lt;img src=x onerror=alert(1)&gt;"
+  end
+
+  test "XML-like tag blocks stay visible as escaped code" do
+    # Arrange
+    text = "<task>\nBuild feature X.\n</task>\n\n<script>alert(1)</script>"
+
+    # Act
+    html = render(text)
+
+    # Assert
+    assert html =~ "&lt;task&gt;\nBuild feature X.\n&lt;/task&gt;"
+    assert html =~ "&lt;script&gt;alert(1)&lt;/script&gt;"
+    refute html =~ "<script"
+    refute html =~ "<task"
+  end
+
+  test "inline tags are shown as text rather than dropped" do
+    # Arrange
+    text = "use <context> here"
+
+    # Act
+    html = render(text)
+
+    # Assert
+    assert html =~ "use &lt;context&gt; here"
   end
 
   test "javascript links lose their href" do

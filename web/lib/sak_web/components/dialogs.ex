@@ -94,6 +94,72 @@ defmodule SakWeb.Dialogs do
     """
   end
 
+  attr :form, :map, required: true
+
+  def template_form(assigns) do
+    ~H"""
+    <div
+      id="template-form-overlay"
+      class="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-20"
+    >
+      <form
+        id="template-form"
+        phx-hook="TemplateForm"
+        phx-change="template_change"
+        phx-submit="template_submit"
+        class="bg-neutral-900 border border-neutral-700 rounded-md w-[40rem] max-h-[75vh] flex flex-col"
+      >
+        <div class="flex border-b border-neutral-800 shrink-0">
+          <button
+            :for={{field, index} <- Enum.with_index(@form.fields)}
+            id={"template-tab-#{field.name}"}
+            type="button"
+            phx-click="template_select"
+            phx-value-index={index}
+            tabindex="-1"
+            class={[
+              "px-3 py-2 text-xs",
+              index == @form.index && "text-neutral-100 border-b-2 border-neutral-400",
+              index != @form.index && "text-neutral-500 hover:text-neutral-100"
+            ]}
+          >
+            {field.label}{if field.value != "", do: " •"}
+          </button>
+        </div>
+        <div class="px-3 py-2 space-y-2 overflow-y-auto">
+          <div
+            :for={{field, index} <- Enum.with_index(@form.fields)}
+            id={"template-field-#{field.name}"}
+            class={index != @form.index && "hidden"}
+          >
+            <label for={"template-answer-#{field.name}"} class="text-xs text-neutral-400">
+              {field.question}
+            </label>
+            <textarea
+              id={"template-answer-#{field.name}"}
+              name={"values[#{field.name}]"}
+              rows="8"
+              data-current={to_string(index == @form.index)}
+              autocomplete="off"
+              class="w-full resize-none bg-neutral-950 text-neutral-100 px-2 py-1 outline-none border border-neutral-400 rounded"
+            >{field.value}</textarea>
+          </div>
+        </div>
+        <div class="px-3 py-2 border-t border-neutral-800 text-xs text-neutral-500 flex items-center gap-4 shrink-0">
+          <span>tab / shift-tab switch question · ctrl-enter insert into message · esc cancel</span>
+          <button
+            id="template-insert"
+            type="submit"
+            class="ml-auto text-green-400 hover:text-neutral-100"
+          >
+            insert
+          </button>
+        </div>
+      </form>
+    </div>
+    """
+  end
+
   attr :picker, :map, required: true
 
   def mode_picker(assigns) do

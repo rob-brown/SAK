@@ -5,6 +5,7 @@ import {
   normalizeLineEndings,
   lineCount,
   activeMentionStart,
+  appendBlock,
   isCommandTrigger,
   queueFor,
   PASTE_LINE_THRESHOLD,
@@ -121,4 +122,15 @@ test("meta+enter is not a submit", () => {
 test("keys other than enter are not a submit", () => {
   assert.equal(queueFor(key("a")), null)
   assert.equal(queueFor(key("a", {altKey: true})), null)
+})
+
+test("appendBlock replaces a blank message and separates it from existing text", () => {
+  // Arrange
+  const block = "<task>\nX\n</task>"
+
+  // Act
+  const results = [appendBlock("", block), appendBlock("  \n", block), appendBlock("fix this\n", block), appendBlock("keep", "")]
+
+  // Assert
+  assert.deepEqual(results, [block, block, `fix this\n\n${block}`, "keep"])
 })

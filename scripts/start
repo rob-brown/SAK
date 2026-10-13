@@ -5,4 +5,9 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 "$root/scripts/check-gateways" || exit 1
 
 cd "$root/web" || exit 1
-exec mix phx.server
+
+ollaya serve &
+
+mix assets.deploy
+
+exec env PHX_HOST=localhost MIX_ENV=prod SECRET_KEY_BASE=$(mix phx.gen.secret) iex -S mix phx.server

@@ -80,6 +80,7 @@ export function isModalOpen(dataset) {
     dataset.modePickerOpen === "true" ||
     dataset.usageOpen === "true" ||
     dataset.skillFormOpen === "true" ||
+    dataset.templateFormOpen === "true" ||
     dataset.renameOpen === "true" ||
     dataset.wizardOpen === "true" ||
     dataset.commandOpen === "true"

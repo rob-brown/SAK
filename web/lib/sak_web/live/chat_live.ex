@@ -187,6 +187,8 @@ defmodule SakWeb.ChatLive do
       mode_picker: nil,
       skill_commands: [],
       skill_form: nil,
+      template_form: nil,
+      template_draft: nil,
       permission_mode: nil,
       permissions: [],
       rename: nil,

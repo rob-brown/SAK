@@ -7,6 +7,7 @@ defmodule SakWeb.ChatLive.Permission do
   alias SakWeb.ChatLive.Search
   alias SakWeb.ChatLive.Sessions
   alias SakWeb.ChatLive.SkillForm
+  alias SakWeb.ChatLive.TemplateForm
   alias SakWeb.ChatLive.UsagePanel
 
   @approvals %{"y" => "allow", "a" => "allow_conversation", "n" => "deny", "escape" => "deny"}
@@ -59,6 +60,7 @@ defmodule SakWeb.ChatLive.Permission do
     |> PermissionMode.close()
     |> UsagePanel.close()
     |> SkillForm.cancel()
+    |> TemplateForm.cancel()
     |> Search.close()
     |> Sessions.close_filter()
   end

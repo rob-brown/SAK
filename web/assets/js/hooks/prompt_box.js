@@ -34,6 +34,11 @@ export function isCommandTrigger(value) {
   return value === ":"
 }
 
+export function appendBlock(existing, block) {
+  if (block === "") return existing
+  return existing.trim() === "" ? block : `${existing.replace(/\s+$/, "")}\n\n${block}`
+}
+
 export function queueFor(event) {
   if (event.key !== "Enter" || event.shiftKey || event.metaKey) return null
   if (event.altKey || event.ctrlKey) return "follow_up"
@@ -52,6 +57,14 @@ const PromptBox = {
     this.el.addEventListener("input", () => this.handleInput())
 
     this.handleEvent("mention_insert", ({text}) => this.insertMention(text))
+    this.handleEvent("prompt_fill", ({text}) => this.fill(text))
+  },
+
+  fill(text) {
+    const el = this.el
+    el.value = appendBlock(el.value, text)
+    el.selectionStart = el.selectionEnd = el.value.length
+    el.focus()
   },
 
   handleKeydown(event) {

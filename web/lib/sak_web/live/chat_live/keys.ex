@@ -19,6 +19,7 @@ defmodule SakWeb.ChatLive.Keys do
   alias SakWeb.ChatLive.Sessions
   alias SakWeb.ChatLive.SkillForm
   alias SakWeb.ChatLive.Subagents
+  alias SakWeb.ChatLive.TemplateForm
   alias SakWeb.ChatLive.UsagePanel
 
   def handle(key, socket) do
@@ -46,6 +47,7 @@ defmodule SakWeb.ChatLive.Keys do
   defp modal(%{mode_picker: %{}}), do: :mode_picker
   defp modal(%{usage: %{}}), do: :usage
   defp modal(%{skill_form: %{}}), do: :skill_form
+  defp modal(%{template_form: %{}}), do: :template_form
   defp modal(%{help_open?: true}), do: :help
   defp modal(%{models: %{}}), do: :models
   defp modal(%{new_session: %{}}), do: :wizard
@@ -74,6 +76,8 @@ defmodule SakWeb.ChatLive.Keys do
   defp modal_key(:skill_form, "escape", socket), do: SkillForm.cancel(socket)
   defp modal_key(:skill_form, "[", socket), do: SkillForm.move(socket, -1)
   defp modal_key(:skill_form, "]", socket), do: SkillForm.move(socket, 1)
+
+  defp modal_key(:template_form, "escape", socket), do: TemplateForm.cancel(socket)
 
   defp modal_key(:help, "escape", socket) do
     close_help(socket)
@@ -169,6 +173,10 @@ defmodule SakWeb.ChatLive.Keys do
 
   defp chat_key("/", socket) do
     Search.open(socket)
+  end
+
+  defp chat_key("T", socket) do
+    TemplateForm.open(socket)
   end
 
   defp chat_key("n", socket) do
